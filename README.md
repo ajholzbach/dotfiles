@@ -1,2 +1,2 @@
 # dotfiles
-A repo to store dotfiles
+A repo to store my dotfiles
