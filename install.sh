@@ -77,4 +77,3 @@ ln -sfv "$DOTFILES_REPO/.p10k.zsh" ~/
 # Add more symlinks as needed
 
 echo "Dotfiles installation complete!"
-
