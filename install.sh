@@ -26,9 +26,9 @@ done
 if [[ "$INSTALL_SUDO_PACKAGES" == true ]]; then
     echo "Installing sudo-required packages..."
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        if command_exists apt-get ; then
-            sudo apt-get update
-            sudo apt-get install vim -y
+        if command_exists apt ; then
+            sudo apt update
+            sudo apt install vim -y
         elif command_exists yum ; then
             sudo yum install vim -y
         elif command_exists pacman ; then
