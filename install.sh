@@ -22,24 +22,41 @@ while getopts ":s" opt; do
   esac
 done
 
+# List of packages to install
+PACKAGES_TO_INSTALL=("vim" "neofetch")
+PACKAGES_TO_INSTALL_STRING="${PACKAGES_TO_INSTALL[@]}"
+
 # Detecting the platform and package manager
 if [[ "$INSTALL_SUDO_PACKAGES" == true ]]; then
     echo "Installing sudo-required packages..."
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         if command_exists apt ; then
-            sudo apt update
-            sudo apt install vim -y
+            sudo apt update -y
+            sudo apt install $PACKAGES_TO_INSTALL_STRING -y
+        elif command_exists dnf ; then
+            sudo dnf update -y
+            sudo dnf install $PACKAGES_TO_INSTALL_STRING -y
         elif command_exists yum ; then
-            sudo yum install vim -y
+            sudo yum update -y
+            sudo yum install $PACKAGES_TO_INSTALL_STRING -y
         elif command_exists pacman ; then
-            sudo pacman -Sy vim
+            sudo pacman -Sy
+            sudo pacman -S $PACKAGES_TO_INSTALL_STRING --noconfirm
         elif command_exists zypper ; then
-            sudo zypper install vim
+            sudo zypper refresh
+            sudo zypper install $PACKAGES_TO_INSTALL_STRING -y
+        elif command_exists apk ; then
+            sudo apk update
+            sudo apk add $PACKAGES_TO_INSTALL_STRING
+        elif command_exists emerge ; then
+            sudo emerge --sync
+            sudo emerge $PACKAGES_TO_INSTALL_STRING
         else
             echo "No recognized package manager found. Install vim manually."
         fi
     elif [[ "$OSTYPE" == "darwin"* ]]; then
-        brew install vim
+        brew update
+        brew install $PACKAGES_TO_INSTALL_STRING
     fi
 else
     echo "Skipping installation of sudo-required packages."
@@ -70,10 +87,39 @@ else
     echo "Powerlevel10k theme already installed."
 fi
 
+# Install Dracula theme for vim if not installed
+if [ ! -d "$HOME/.vim/pack/themes/start/dracula" ]; then
+    echo "Installing Dracula theme for vim..."
+    mkdir -p $HOME/.vim/pack/themes/start
+    git clone https://github.com/dracula/vim.git $HOME/.vim/pack/themes/start/dracula
+else
+    echo "Dracula theme for vim already installed."
+fi
+
 # Creating symlinks
 echo "Creating symlinks for dotfiles..."
-ln -sfv "$DOTFILES_REPO/.zshrc" ~/
-ln -sfv "$DOTFILES_REPO/.p10k.zsh" ~/
-# Add more symlinks as needed
+
+# Check and create symlink for .zshrc
+if [ ! -L "$HOME/.zshrc" ]; then
+    ln -sfv "$DOTFILES_REPO/.zshrc" ~/
+else
+    echo ".zshrc symlink already exists."
+fi
+
+# Check and create symlink for .p10k.zsh
+if [ ! -L "$HOME/.p10k.zsh" ]; then
+    ln -sfv "$DOTFILES_REPO/.p10k.zsh" ~/
+else
+    echo ".p10k.zsh symlink already exists."
+fi
+
+# Check and create symlink for .vimrc
+if [ ! -L "$HOME/.vimrc" ]; then
+    ln -sfv "$DOTFILES_REPO/.vimrc" ~/
+else
+    echo ".vimrc symlink already exists."
+fi
+
+# Add more checks and symlinks as needed
 
 echo "Dotfiles installation complete!"
