@@ -1,13 +1,11 @@
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""               
-"               
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "               ██╗   ██╗██╗███╗   ███╗██████╗  ██████╗
 "               ██║   ██║██║████╗ ████║██╔══██╗██╔════╝
 "               ██║   ██║██║██╔████╔██║██████╔╝██║     
 "               ╚██╗ ██╔╝██║██║╚██╔╝██║██╔══██╗██║     
 "                ╚████╔╝ ██║██║ ╚═╝ ██║██║  ██║╚██████╗
 "                 ╚═══╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝
-"               
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""               
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " Disable compatibility with vi which can cause unexpected issues.
 set nocompatible
@@ -76,12 +74,6 @@ set ignorecase
 " This will allow you to search specifically for capital letters.
 set smartcase
 
-" Show partial command you type in the last line of the screen.
-set showcmd
-
-" Show the mode you are on the last line.
-set showmode
-
 " Show matching words during a search.
 set showmatch
 
@@ -143,6 +135,9 @@ set laststatus=2
 
 " Disable showmode - i.e. Don't show mode like --INSERT-- in current statusline.
 set noshowmode
+
+" Disable the ruler
+set noruler
 
 " Enable GUI colors for terminals (Some terminals may not support this, so you'll have to *manually* set color pallet for tui colors. Lie tuibg=255, tuifg=120, etc.).
 set termguicolors

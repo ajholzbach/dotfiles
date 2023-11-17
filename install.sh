@@ -23,7 +23,7 @@ while getopts ":s" opt; do
 done
 
 # List of packages to install
-PACKAGES_TO_INSTALL=("vim" "neofetch")
+PACKAGES_TO_INSTALL=("vim" "neofetch" "wget")
 PACKAGES_TO_INSTALL_STRING="${PACKAGES_TO_INSTALL[@]}"
 
 # Detecting the platform and package manager
@@ -95,6 +95,50 @@ if [ ! -d "$HOME/.vim/pack/themes/start/dracula" ]; then
 else
     echo "Dracula theme for vim already installed."
 fi
+
+# Install MesloLGS NF fonts
+FONT_URLS=(
+    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf"
+    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf"
+    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf"
+    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf"
+)
+
+# Function to install fonts
+install_font() {
+    local url=$1
+    # Decode the URL-encoded font name
+    local font_name=$(basename "$url" | sed -e "s/%20/ /g")
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        local font_dir="$HOME/Library/Fonts"
+        if [ ! -f "$font_dir/$font_name" ]; then
+            echo "Downloading $font_name..."
+            curl -L "$url" -o "$font_dir/$font_name"
+        else
+            echo "$font_name already installed."
+        fi
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux
+        local font_dir="$HOME/.local/share/fonts"
+        mkdir -p "$font_dir"
+        if [ ! -f "$font_dir/$font_name" ]; then
+            echo "Downloading $font_name..."
+            wget -O "$font_dir/$font_name" "$url"
+            fc-cache -f -v
+        else
+            echo "$font_name already installed."
+        fi
+    else
+        echo "Unsupported OS for font installation."
+    fi
+}
+
+# Install each font
+for url in "${FONT_URLS[@]}"; do
+    install_font "$url"
+done
 
 # Creating symlinks
 echo "Creating symlinks for dotfiles..."
