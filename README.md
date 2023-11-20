@@ -14,7 +14,7 @@ A repo to store my dotfiles + a bit more
 
 ## Installation
 ```bash
-git clone https://github.com/ajholzbach/dotfiles.git ~/
+git clone https://github.com/ajholzbach/dotfiles.git
 cd ~/dotfiles
 ```
 
