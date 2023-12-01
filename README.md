@@ -21,7 +21,7 @@ Link to oh-my-zsh
     - Installs the [`zsh-syntax-highlighting`](https://github.com/zsh-users/zsh-syntax-highlighting) plugin
 
 - Installs [`powerlevel10k`](https://github.com/romkatv/powerlevel10k) theme for `oh-my-zsh`
-    - Install the following Meslo Nerd Fonts for best results:
+    - Manually install the following Meslo Nerd Fonts for best results:
     - [MesloLGS NF Regular.ttf](
        https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf)
    - [MesloLGS NF Bold.ttf](
