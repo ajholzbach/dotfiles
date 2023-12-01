@@ -10,6 +10,18 @@ command_exists () {
     type "$1" &> /dev/null ;
 }
 
+# Parse arguments for "-l" option
+CREATE_SYMLINKS=false
+
+while getopts ":l" opt; do
+  case ${opt} in
+    l ) CREATE_SYMLINKS=true
+    ;;
+    \? ) echo "Usage: cmd [-l]"
+    ;;
+  esac
+done
+
 # Flag for installing sudo-required packages
 INSTALL_SUDO_PACKAGES=false
 
@@ -96,30 +108,38 @@ else
     echo "Dracula theme for vim already installed."
 fi
 
-# Creating symlinks
-echo "Creating symlinks for dotfiles..."
+# Function to handle file (create symlink or copy)
+handle_file() {
+    local file=$1
+    local target="$HOME/$file"
+    local source="$DOTFILES_REPO/$file"
 
-# Check and create symlink for .zshrc
-if [ ! -L "$HOME/.zshrc" ]; then
-    ln -sfv "$DOTFILES_REPO/.zshrc" ~/
-else
-    echo ".zshrc symlink already exists."
-fi
+    # Check if the target is a symlink
+    if [ -L "$target" ]; then
+        echo "$file symlink already exists. Skipping..."
+        return
+    fi
 
-# Check and create symlink for .p10k.zsh
-if [ ! -L "$HOME/.p10k.zsh" ]; then
-    ln -sfv "$DOTFILES_REPO/.p10k.zsh" ~/
-else
-    echo ".p10k.zsh symlink already exists."
-fi
+    # Backup existing file
+    if [ -e "$target" ]; then
+        echo "Backing up existing $file to $file.bak"
+        mv -v "$target" "${target}.bak"
+    fi
 
-# Check and create symlink for .vimrc
-if [ ! -L "$HOME/.vimrc" ]; then
-    ln -sfv "$DOTFILES_REPO/.vimrc" ~/
-else
-    echo ".vimrc symlink already exists."
-fi
+    # Create symlink or copy file
+    if [ "$CREATE_SYMLINKS" = true ]; then
+        ln -sfv "$source" "$target"
+    else
+        cp -v "$source" "$target"
+    fi
+}
 
-# Add more checks and symlinks as needed
+echo "Setting up dotfiles..."
+
+# Handle each file
+handle_file ".zshrc"
+handle_file ".p10k.zsh"
+handle_file ".vimrc"
+# Add more files as needed
 
 echo "Dotfiles installation complete!"
