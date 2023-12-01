@@ -16,11 +16,11 @@ Link to oh-my-zsh
     - Only required if you want to install packages
 
 ## What it does
-- Installs `oh-my-zsh`
-    - Installs the `zsh-autosuggestions` plugin
-    - Installs the `zsh-syntax-highlighting` plugin
+- Installs [`oh-my-zsh`](https://ohmyz.sh/)
+    - Installs the [`zsh-autosuggestions`](https://github.com/zsh-users/zsh-autosuggestions) plugin
+    - Installs the [`zsh-syntax-highlighting`](https://github.com/zsh-users/zsh-syntax-highlighting) plugin
 
-- Installs `powerlevel10k` theme for `oh-my-zsh`
+- Installs [`powerlevel10k`](https://github.com/romkatv/powerlevel10k) theme for `oh-my-zsh`
     - Install the following Meslo Nerd Fonts for best results:
     - [MesloLGS NF Regular.ttf](
        https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf)
