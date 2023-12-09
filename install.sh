@@ -140,6 +140,10 @@ echo "Setting up dotfiles..."
 handle_file ".zshrc"
 handle_file ".p10k.zsh"
 handle_file ".vimrc"
+handle_file ".gitignore_global"
 # Add more files as needed
+
+# Configure global gitignore
+git config --global core.excludesfile ~/.gitignore_global
 
 echo "Dotfiles installation complete!"
