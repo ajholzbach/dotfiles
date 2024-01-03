@@ -6,6 +6,7 @@ A repo to store my dotfiles + a comprehensive install script
 - `.zshrc`: Zsh config
 - `.vimrc`: Vim config
 - `.p10k.zsh`: Powerlevel10k config
+- `macOS`: Folder for macOS specific install scripts
 
 ## Requirements
 - `git`: To clone this repo
