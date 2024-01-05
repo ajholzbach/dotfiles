@@ -6,7 +6,7 @@ A repo to store my dotfiles + a comprehensive install script
 - `.zshrc`: Zsh config
 - `.vimrc`: Vim config
 - `.p10k.zsh`: Powerlevel10k config
-- `macOS`: Folder for macOS specific install scripts
+- `macOS`: Folder for macOS specific install scripts and icons
 
 ## Requirements
 - `git`: To clone this repo
@@ -33,6 +33,8 @@ Link to oh-my-zsh
        https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf)
 
 - Installs the [dracula](https://draculatheme.com/vim) theme for `vim`
+
+- Installs [`SDKMAN!`](https://sdkman.io/) for managing Java versions
 
 - Installs packages (if run with `-s`)
     - Currently `vim`, `wget`, and `neofetch`
