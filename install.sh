@@ -10,27 +10,15 @@ command_exists () {
     type "$1" &> /dev/null ;
 }
 
-# Parse arguments for "-l" option
+# Parse arguments for "-l" and "-s" options
 CREATE_SYMLINKS=false
+INSTALL_PACKAGES=false
 
-while getopts ":l" opt; do
+while getopts ":ls" opt; do
   case ${opt} in
-    l ) CREATE_SYMLINKS=true
-    ;;
-    \? ) echo "Usage: cmd [-l]"
-    ;;
-  esac
-done
-
-# Flag for installing sudo-required packages
-INSTALL_SUDO_PACKAGES=false
-
-while getopts ":s" opt; do
-  case ${opt} in
-    s ) INSTALL_SUDO_PACKAGES=true
-    ;;
-    \? ) echo "Usage: cmd [-s]"
-    ;;
+    l ) CREATE_SYMLINKS=true ;;
+    s ) INSTALL_PACKAGES=true ;;
+    \? ) echo "Usage: cmd [-l] [-s]" ;;
   esac
 done
 
@@ -39,7 +27,7 @@ PACKAGES_TO_INSTALL=("vim" "neofetch" "wget")
 PACKAGES_TO_INSTALL_STRING="${PACKAGES_TO_INSTALL[@]}"
 
 # Detecting the platform and package manager
-if [[ "$INSTALL_SUDO_PACKAGES" == true ]]; then
+if [[ "$INSTALL_PACKAGES" == true ]]; then
     echo "Installing sudo-required packages..."
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         if command_exists apt ; then
@@ -77,7 +65,7 @@ fi
 # Install Oh My Zsh if not installed
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
     echo "Installing Oh My Zsh..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 else
     echo "Oh My Zsh already installed."
 fi
@@ -161,3 +149,10 @@ handle_file ".gitignore_global"
 git config --global core.excludesfile ~/.gitignore_global
 
 echo "Dotfiles installation complete!"
+
+if command_exists zsh; then
+    echo "Changing shell to zsh..."
+    exec zsh -l
+else
+    echo "Zsh is not installed. Staying with the current shell."
+fi
