@@ -34,10 +34,9 @@ Link to oh-my-zsh
 
 - Installs the [dracula](https://draculatheme.com/vim) theme for `vim`
 
-- Installs [`SDKMAN!`](https://sdkman.io/) for managing Java versions
-
 - Installs packages (if run with `-s`)
     - Currently `vim`, `wget`, and `neofetch`
+    - Installs [`SDKMAN!`](https://sdkman.io/) for managing Java versions
 
 - Copies dotfiles to the home directory
     - Backs up existing dotfiles if they exist
