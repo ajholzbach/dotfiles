@@ -334,3 +334,4 @@ augroup SetStslineline
     autocmd BufEnter,WinEnter * call ActivateStatusline()
     autocmd BufLeave,WinLeave * call DeactivateStatusline()
 augroup END
+

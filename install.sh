@@ -58,6 +58,17 @@ if [[ "$INSTALL_PACKAGES" == true ]]; then
         brew update
         brew install $PACKAGES_TO_INSTALL_STRING
     fi
+
+    # Install SDKMAN if not installed
+    if [ ! -d "$HOME/.sdkman" ]; then
+        echo "Installing SDKMAN..."
+        curl -s "https://get.sdkman.io" | bash
+        # Initialize SDKMAN
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+    else
+        echo "SDKMAN already installed."
+    fi
+
 else
     echo "Skipping installation of sudo-required packages."
 fi
@@ -98,16 +109,6 @@ if [ ! -d "$HOME/.vim/pack/themes/start/dracula" ]; then
     git clone https://github.com/dracula/vim.git $HOME/.vim/pack/themes/start/dracula
 else
     echo "Dracula theme for vim already installed."
-fi
-
-# Install SDKMAN if not installed
-if [ ! -d "$HOME/.sdkman" ]; then
-    echo "Installing SDKMAN..."
-    curl -s "https://get.sdkman.io" | bash
-    # Initialize SDKMAN
-    source "$HOME/.sdkman/bin/sdkman-init.sh"
-else
-    echo "SDKMAN already installed."
 fi
 
 # Function to handle file (create symlink or copy)
