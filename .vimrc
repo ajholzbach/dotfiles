@@ -95,6 +95,9 @@ set foldmethod=syntax
 " Start editing with all folds open
 set foldlevelstart=99
 
+" Fix the backspace key
+set backspace=indent,eol,start
+
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "                   STATUSLINE CONFIGURATION

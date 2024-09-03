@@ -1,0 +1,4 @@
+.zshrc
+.p10k.zsh
+.vimrc
+.gitignore_global
