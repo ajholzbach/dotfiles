@@ -47,10 +47,16 @@ Link to oh-my-zsh
 
 ## Installation
 ```bash
-git clone https://github.com/ajholzbach/dotfiles.git
-cd ~/dotfiles
+git clone https://github.com/ajholzbach/dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
 ./install.sh
 ```
 
 - If you want to install sudo required packages, run `./install.sh -s`
 - If you want to create symlinks for the dotfiles in this repo, run `./install.sh -l`
+
+## Removal
+```bash
+cd ~
+rm -rf .dotfiles
+```
