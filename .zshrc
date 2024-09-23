@@ -143,6 +143,27 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     export NVM_DIR="$HOME/.nvm"
     [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
     [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+
+    # pnpm
+    export PNPM_HOME="$HOME/Library/pnpm"
+    case ":$PATH:" in
+    *":$PNPM_HOME:"*) ;;
+    *) export PATH="$PNPM_HOME:$PATH" ;;
+    esac
+    # pnpm end
+
+    # Add alias for opening idea detached
+    alias idead="open -a open -a IntelliJ\ IDEA"
+
+    # Add gh copilot cli alias if it exists
+    if command -v gh &> /dev/null && gh extension list | grep -q 'copilot'; then
+        eval "$(gh copilot alias -- zsh)"
+    fi
+fi
+
+# Source .bash_profile if it exists
+if [ -f ~/.bash_profile ]; then
+    source ~/.bash_profile
 fi
 
 # SKDMAN

@@ -2,6 +2,7 @@
 set -e # Exit on error
 
 # Dotfiles paths (relative to the dotfiles repo)
+# Add any new dotfiles here to track them
 DOTFILES=(".vimrc" ".zshrc" ".p10k.zsh" ".gitignore_global")
 
 # Dynamically determine the dotfiles repo location
