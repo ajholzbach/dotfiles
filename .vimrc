@@ -29,7 +29,7 @@ set clipboard=unnamedplus
 syntax enable
 
 " Set the colorscheme to use.
-colorscheme dracula
+colorscheme catppuccin_mocha
 
 " Add numbers to the file.
 set number
@@ -103,20 +103,20 @@ set backspace=indent,eol,start
 "                   STATUSLINE CONFIGURATION
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " This was made by Reddit user u/SamLovesNotion. Also with the help of - https://tdaly.co.uk/projects/vim-statusline-generator/ for learning the syntax.
-" Slightly modified by ajholzbach to work with Dracula theme.
+" Slightly modified by ajholzbach to work with Catppuccin Mocha theme.
 
 " Define color variables
-let g:StslineColorGreen  = "#50fa7b"  " Dracula Green
-let g:StslineColorBlue   = "#8be9fd"  " Dracula Cyan
-let g:StslineColorViolet = "#bd93f9"  " Dracula Purple
-let g:StslineColorYellow = "#f1fa8c"  " Dracula Yellow
-let g:StslineColorOrange = "#ffb86c"  " Dracula Orange
+let g:StslineColorGreen  = "#a6e3a1"  " Catppuccin Green
+let g:StslineColorBlue   = "#89dceb"  " Catppuccin Cyan
+let g:StslineColorViolet = "#cba6f7"  " Catppuccin Purple
+let g:StslineColorYellow = "#f9e2af"  " Catppuccin Yellow
+let g:StslineColorOrange = "#fab387"  " Catppuccin Orange
 
-let g:StslineColorLight  = "#343746"  " Dracula Light Background
-let g:StslineColorLight1 = "#424450"  " Dracula Lighter Background
-let g:StslineColorDark   = "#282a36"  " Dracula Background
-let g:StslineColorDark1  = "#21222C"  " Dracula Dark Background
-let g:StslineColorDark2  = "#191A21"  " Dracula Darker Background
+let g:StslineColorLight  = "#45475a"  " Catppuccin Light Background
+let g:StslineColorLight1 = "#313244"  " Catppuccin Lighter Background
+let g:StslineColorDark   = "#1e1e2e"  " Catppuccin Background
+let g:StslineColorDark1  = "#181825"  " Catppuccin Dark Background
+let g:StslineColorDark2  = "#11111b"  " Catppuccin Darker Background
 
 " Define colors
 let g:StslineBackColor   = g:StslineColorDark
