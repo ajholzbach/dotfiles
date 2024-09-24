@@ -159,6 +159,11 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     if command -v gh &> /dev/null && gh extension list | grep -q 'copilot'; then
         eval "$(gh copilot alias -- zsh)"
     fi
+
+    # Add thefuck alias if it exists
+    if command -v thefuck &> /dev/null; then
+        eval "$(thefuck --alias)"
+    fi
 fi
 
 # Source .bash_profile if it exists
