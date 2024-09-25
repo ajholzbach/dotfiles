@@ -7,14 +7,12 @@ A repo to store my dotfiles + a comprehensive install script
 - `.vimrc`: Vim config
 - `.p10k.zsh`: Powerlevel10k config
 - `macOS`: Folder for macOS specific install scripts and icons
+- `scripts`: Folder for miscellaneous useful scripts
 
 ## Requirements
 - `git`: To clone this repo
 Link to oh-my-zsh
 - `curl`: To install [`oh-my-zsh`](https://ohmyz.sh/)
-- `sudo`: If you want to install sudo required packages (linux only)
-- Package manager: Currently supports `apt`, `dnf`, `yum`, `pacman`, `zypper`, `apk`, `emerge`, and `brew` for macOS
-    - Only required if you want to install packages
 
 ## What it does
 - Installs [`oh-my-zsh`](https://ohmyz.sh/)
@@ -22,21 +20,22 @@ Link to oh-my-zsh
     - Installs the [`zsh-syntax-highlighting`](https://github.com/zsh-users/zsh-syntax-highlighting) plugin
 
 - Installs [`powerlevel10k`](https://github.com/romkatv/powerlevel10k) theme for `oh-my-zsh`
-    - Manually install the following Meslo Nerd Fonts for best results:
+    - Install the following Meslo Nerd Fonts for best results in the terminal:
     - [MesloLGS NF Regular.ttf](
        https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf)
-   - [MesloLGS NF Bold.ttf](
+    - [MesloLGS NF Bold.ttf](
        https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf)
-   - [MesloLGS NF Italic.ttf](
+    - [MesloLGS NF Italic.ttf](
        https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf)
-   - [MesloLGS NF Bold Italic.ttf](
+    - [MesloLGS NF Bold Italic.ttf](
        https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf)
+    - You can also install the fonts by running the following script:
+    ```bash
+    cd ~/.dotfiles/scripts
+    ./font_install.sh
+    ```
 
-- Installs the [dracula](https://draculatheme.com/vim) theme for `vim`
-
-- Installs packages (if run with `-s`)
-    - Currently `vim`, `wget`, and `neofetch`
-    - Installs [`SDKMAN!`](https://sdkman.io/) for managing Java versions
+- Installs the [catppuccin_mocha](https://github.com/catppuccin/vim) theme for `vim`
 
 - Copies dotfiles to the home directory
     - Backs up existing dotfiles if they exist
@@ -46,17 +45,25 @@ Link to oh-my-zsh
     - Use this option if you want to keep your dotfiles in sync with this repo
 
 ## Installation
+- Running the following commands will clone this repo and run the install script
 ```bash
+cd ~
 git clone https://github.com/ajholzbach/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 ./install.sh
 ```
+- If you want to create symlinks for the dotfiles in this repo, run `./install.sh -l` instead of `./install.sh`
 
-- If you want to install sudo required packages, run `./install.sh -s`
-- If you want to create symlinks for the dotfiles in this repo, run `./install.sh -l`
+### Optional
+- To install the recommended fonts for `powerlevel10k`, run the following script:
+```bash
+cd ~/.dotfiles/scripts
+./font_install.sh
+```
 
 ## Removal
 ```bash
-cd ~
+cd ~/.dotfiles
+./install.sh -r
 rm -rf .dotfiles
 ```
