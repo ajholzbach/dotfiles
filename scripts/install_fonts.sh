@@ -61,14 +61,6 @@ install_fonts_linux() {
     echo "Fonts installed successfully in $FONT_DIR."
 }
 
-# Check for required commands
-for cmd in curl fc-cache; do
-    if ! command_exists $cmd; then
-        echo "Error: $cmd is not installed."
-        exit 1
-    fi
-done
-
 # Determine the operating system
 if [[ "$OSTYPE" == "darwin"* ]]; then
     install_fonts_mac
