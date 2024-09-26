@@ -1,0 +1,6 @@
+pip_interop_enabled: true
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+channel_priority: flexible
