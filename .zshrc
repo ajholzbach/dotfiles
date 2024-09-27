@@ -1,11 +1,11 @@
-# """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""" 
+# """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 #                 ███████╗███████╗██╗  ██╗██████╗  ██████╗
 #                 ╚══███╔╝██╔════╝██║  ██║██╔══██╗██╔════╝
-#                   ███╔╝ ███████╗███████║██████╔╝██║     
-#                  ███╔╝  ╚════██║██╔══██║██╔══██╗██║     
+#                   ███╔╝ ███████╗███████║██████╔╝██║
+#                  ███╔╝  ╚════██║██╔══██║██╔══██╗██║
 #                 ███████╗███████║██║  ██║██║  ██║╚██████╗
 #                 ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝
-# """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""" 
+# """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
@@ -166,6 +166,11 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     fi
 fi
 
+# # Set XDG_CONFIG_HOME if not already set
+if [ -z "$XDG_CONFIG_HOME" ]; then
+    export XDG_CONFIG_HOME="$HOME/.config"
+fi
+
 # Source .bash_profile if it exists
 if [ -f ~/.bash_profile ]; then
     source ~/.bash_profile
@@ -175,3 +180,4 @@ fi
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+
