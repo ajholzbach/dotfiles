@@ -1,0 +1,8 @@
+.config/gh/
+.config/iterm2/
+.config/gh-copilot/
+.config/github-copilot/
+.config/raycast/
+.config/zed/embeddings/
+.config/zed/prompts/
+.config/zed/conversations/

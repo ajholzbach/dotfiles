@@ -1,13 +1,21 @@
 # dotfiles
-A repo to store my dotfiles + a comprehensive install script
+A repo to store my dotfiles, a comprehensive install script, and a bit more
 
 ## Contents
 - `install.sh`: Installs dotfiles and other packages (if specified)
 - `.zshrc`: Zsh config
 - `.vimrc`: Vim config
 - `.p10k.zsh`: Powerlevel10k config
-- `macOS`: Folder for macOS specific install scripts and icons
+- `.gitignore_global`: Global gitignore file
+- `.condarc`: Conda config
+- `.config/bat/`: Config for the `bat` command (cat with catppuccin themed syntax highlighting)
+- `.config/btop/`: Config for the `btop` command (better top, also with catppuccin theme)
+- `.config/lazygit/`: Config for the `lazygit` command (with catppuccin theme)
+- `.config/thefuck/`: Config for `thefuck` command (currently default)
+- `.config/zed/`: Config for [zed](https://zed.dev/) editor (with catppuccin theme and MesloLGS NF font set)
 - `scripts`: Folder for miscellaneous useful scripts
+- `macOS`: Folder for macOS specific install scripts and icons
+- `backup`: Folder for old scripts
 
 ## Requirements
 - `git`: To clone this repo
@@ -62,6 +70,7 @@ cd ~/.dotfiles/scripts
 ```
 
 ## Removal
+- This will remove the dotfiles and restore the backups (if they exist)
 ```bash
 cd ~/.dotfiles
 ./install.sh -r

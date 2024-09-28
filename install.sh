@@ -3,7 +3,7 @@ set -e # Exit on error
 
 # Dotfiles paths (relative to the dotfiles repo)
 # Add any new dotfiles here to track them
-DOTFILES=(".vimrc" ".zshrc" ".p10k.zsh" ".gitignore_global" ".condarc")
+DOTFILES=(".vimrc" ".zshrc" ".p10k.zsh" ".gitignore_global" ".condarc" ".config/zed" ".config/bat" ".config/btop" ".config/thefuck" ".config/lazygit")
 
 # Dynamically determine the dotfiles repo location
 DOTFILES_REPO=$(dirname "$(realpath "$0")")
@@ -54,26 +54,33 @@ install_file() {
     local target="$HOME/$file"
     local source="$DOTFILES_REPO/$file"
 
+    # Ensure parent directory exists for the target (but avoid creating the target directory itself)
+    mkdir -p "$(dirname "$target")"
+
     # Check if the target is a symlink
     if [ -L "$target" ]; then
         echo "$file symlink already exists. Replacing symlink..."
-    else
-        # Backup existing file
-        if [ -e "$target" ]; then
-            echo "Backing up existing $file to $file.bak"
-            mv -v "$target" "${target}.bak"
-        fi
+        rm -v "$target"  # Remove the existing symlink
+    elif [ -e "$target" ]; then
+        # Backup existing file or directory if it's not a symlink
+        echo "Backing up existing $file to $file.bak"
+        mv -v "$target" "${target}.bak"
     fi
 
-    # Create symlink or copy file
+    # Create symlink or copy file/directory
     if [ "$CREATE_SYMLINKS" = true ]; then
-        ln -sfv "$source" "$target"
+        # Symlink the file or directory
+        ln -sv "$source" "$target"
     else
-        cp -v "$source" "$target"
+        # If it's a directory, copy recursively; otherwise, copy the file
+        if [ -d "$source" ]; then
+            cp -rv "$source" "$target"
+        else
+            cp -v "$source" "$target"
+        fi
     fi
 }
 
-# Function to restore backups
 restore_file() {
     local file=$1
     local target="$HOME/$file"
@@ -82,12 +89,19 @@ restore_file() {
     if [ -L "$target" ]; then
         echo "Removing symlink $file"
         rm -v "$target"
+    elif [ -e "$target" ]; then
+        # If it's not a symlink but still exists, remove it
+        echo "$file exists but is not a symlink. Removing it before restoring backup."
+        rm -rv "$target"
     fi
 
     # Restore backup if it exists
     if [ -e "${target}.bak" ]; then
         echo "Restoring backup for $file"
         mv -v "${target}.bak" "$target"
+        cp -rv "$target" "${target}.bak"  # Backup the restored file
+    else
+        echo "Warning: No backup found for $file"
     fi
 }
 
