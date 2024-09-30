@@ -63,8 +63,16 @@ install_file() {
         rm -v "$target"  # Remove the existing symlink
     elif [ -e "$target" ]; then
         # Backup existing file or directory if it's not a symlink
+        local backup="${target}.bak"
+        if [ -d "$target" ]; then
+            # If it's a directory, remove the existing backup directory if it exists
+            if [ -d "$backup" ]; then
+                echo "Removing existing backup directory $backup"
+                rm -rf "$backup"
+            fi
+        fi
         echo "Backing up existing $file to $file.bak"
-        mv -v "$target" "${target}.bak"
+        mv -v "$target" "$backup"
     fi
 
     # Create symlink or copy file/directory

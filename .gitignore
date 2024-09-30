@@ -6,3 +6,4 @@
 .config/zed/embeddings/
 .config/zed/prompts/
 .config/zed/conversations/
+/temp/
