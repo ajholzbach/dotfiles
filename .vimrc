@@ -274,6 +274,9 @@ let b:FiletypeIcon = ' '
 elseif &filetype == 'cpp'
 let b:FiletypeIcon = ' '
 
+elseif &filetype == 'kotlin'
+let b:FiletypeIcon == ' '
+
 elseif &filetype == 'javascript'
 let b:FiletypeIcon = ' '
 
