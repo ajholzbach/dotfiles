@@ -23,7 +23,7 @@ set encoding=utf-8
 set mouse=a
 
 " Enable use of system clipboard.
-set clipboard=unnamedplus
+set clipboard^=unnamed,unnamedplus
 
 " Turn syntax highlighting on.
 syntax enable
