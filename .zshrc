@@ -118,17 +118,42 @@ source $ZSH/oh-my-zsh.sh
 
 # Alias 'gup' (for git update) will pull latest changes into main branch and then rebase into current branch
 alias gup='
+GIT_CURRENT_BRANCH=$(git_current_branch);
+GIT_MAIN_BRANCH=$(git_main_branch);
+
 if git diff-index --quiet HEAD --; then
   echo "No changes to stash";
 else
-  git stash push -m "pre-rebase stash";
+  echo "Stashing changes...";
+  git stash push -m "pre-rebase stash" --include-untracked;
   STASHED=true;
 fi;
-TEMP=$(git_current_branch) && git switch $(git_main_branch) && git pull --rebase && git switch $TEMP && git rebase $(git_main_branch);
+
+echo "--------------------";
+echo "Switching to '\''$GIT_MAIN_BRANCH'\''...";
+git switch "$GIT_MAIN_BRANCH";
+
+echo "--------------------";
+echo "Pulling latest changes into '\''$GIT_MAIN_BRANCH'\''...";
+git pull --rebase --autostash;
+
+echo "--------------------";
+echo "Switching back to '\''$GIT_CURRENT_BRANCH'\''...";
+git switch "$GIT_CURRENT_BRANCH";
+
+echo "--------------------";
+echo "Rebasing current branch onto '\''$GIT_MAIN_BRANCH'\''...";
+git rebase "$GIT_MAIN_BRANCH";
+
 if [ "$STASHED" = true ]; then
+  echo "--------------------";
+  echo "Applying stashed changes...";
   git stash pop;
 fi;
-unset TEMP STASHED
+
+unset GIT_CURRENT_BRANCH GIT_MAIN_BRANCH STASHED;
+echo "--------------------";
+echo "Update and rebase complete.";
 '
 
 if [ -d "$HOME/.local/bin" ]; then
