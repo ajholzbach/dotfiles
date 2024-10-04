@@ -115,6 +115,22 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
+
+# Alias 'gup' (for git update) will pull latest changes into main branch and then rebase into current branch
+alias gup='
+if git diff-index --quiet HEAD --; then
+  echo "No changes to stash";
+else
+  git stash push -m "pre-rebase stash";
+  STASHED=true;
+fi;
+TEMP=$(git_current_branch) && git switch $(git_main_branch) && git pull --rebase && git switch $TEMP && git rebase $(git_main_branch);
+if [ "$STASHED" = true ]; then
+  git stash pop;
+fi;
+unset TEMP STASHED
+'
+
 if [ -d "$HOME/.local/bin" ]; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
