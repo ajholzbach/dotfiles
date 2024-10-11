@@ -125,7 +125,7 @@ if git diff-index --quiet HEAD --; then
   echo "No changes to stash";
 else
   echo "Stashing changes...";
-  git stash push -m "pre-rebase stash" --include-untracked;
+  git stash push -m "pre-merge stash" --include-untracked;
   STASHED=true;
 fi;
 
@@ -142,8 +142,8 @@ echo "Switching back to '\''$GIT_CURRENT_BRANCH'\''...";
 git switch "$GIT_CURRENT_BRANCH";
 
 echo "--------------------";
-echo "Rebasing current branch onto '\''$GIT_MAIN_BRANCH'\''...";
-git rebase "$GIT_MAIN_BRANCH";
+echo "Merging '\''$GIT_MAIN_BRANCH'\'' into '\''$GIT_CURRENT_BRANCH'\''...";
+git merge "$GIT_MAIN_BRANCH";
 
 if [ "$STASHED" = true ]; then
   echo "--------------------";
@@ -153,7 +153,7 @@ fi;
 
 unset GIT_CURRENT_BRANCH GIT_MAIN_BRANCH STASHED;
 echo "--------------------";
-echo "Update and rebase complete.";
+echo "Update and merge complete.";
 '
 
 if [ -d "$HOME/.local/bin" ]; then
