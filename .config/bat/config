@@ -2,7 +2,7 @@
 --paging=never
 
 # Disable line numbers
-# --style=plain
+--style=plain
 
 # Set the syntax highlighting theme
 --theme="Catppuccin Mocha"
