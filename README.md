@@ -66,7 +66,7 @@ cd ~/.dotfiles
 - To install the recommended fonts for `powerlevel10k`, run the following script:
 ```bash
 cd ~/.dotfiles/scripts
-./font_install.sh
+./install_fonts.sh
 ```
 
 ## Removal
