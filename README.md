@@ -40,7 +40,7 @@ Link to oh-my-zsh
     - You can also install the fonts by running the following script:
     ```bash
     cd ~/.dotfiles/scripts
-    ./font_install.sh
+    ./install_fonts.sh
     ```
 
 - Installs the [catppuccin_mocha](https://github.com/catppuccin/vim) theme for `vim`
