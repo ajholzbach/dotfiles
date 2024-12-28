@@ -13,6 +13,7 @@ A repo to store my dotfiles, a comprehensive install script, and a bit more
 - `.config/lazygit/`: Config for the `lazygit` command (with catppuccin theme)
 - `.config/thefuck/`: Config for `thefuck` command (currently default)
 - `.config/zed/`: Config for [zed](https://zed.dev/) editor (with catppuccin theme and MesloLGS NF font set)
+- `.config/ghostty/`: Config for ghostty terminal emulator
 - `scripts`: Folder for miscellaneous useful scripts
 - `macOS`: Folder for macOS specific install scripts and icons
 - `backup`: Folder for old scripts
