@@ -205,6 +205,11 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     if command -v thefuck &> /dev/null; then
         eval "$(thefuck --alias)"
     fi
+
+    # Add zoxide if it exists
+    if command -v zoxide &> /dev/null; then
+        eval "$(zoxide init zsh)"
+    fi
 fi
 
 # # Set XDG_CONFIG_HOME if not already set
