@@ -165,25 +165,53 @@ fi
 
 # OSX
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # >>> conda initialize >>>
-    # !! Contents within this block are managed by 'conda init' !!
-    __conda_setup="$('/opt/homebrew/Caskroom/miniconda/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-    if [ $? -eq 0 ]; then
-        eval "$__conda_setup"
-    else
-        if [ -f "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
-            . "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh"
-        else
-            export PATH="/opt/homebrew/Caskroom/miniconda/base/bin:$PATH"
-        fi
-    fi
-    unset __conda_setup
-    # <<< conda initialize <<<
+    # # >>> conda initialize >>>
+    # # !! Contents within this block are managed by 'conda init' !!
+    # __conda_setup="$('/opt/homebrew/Caskroom/miniconda/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+    # if [ $? -eq 0 ]; then
+    #     eval "$__conda_setup"
+    # else
+    #     if [ -f "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
+    #         . "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh"
+    #     else
+    #         export PATH="/opt/homebrew/Caskroom/miniconda/base/bin:$PATH"
+    #     fi
+    # fi
+    # unset __conda_setup
+    # # <<< conda initialize <<<
 
-    # nvm
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
-    [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+    # Lazy-load conda
+    conda() {
+      unset -f conda
+      # >>> conda initialize >>>
+      __conda_setup="$('/opt/homebrew/Caskroom/miniconda/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+      if [ $? -eq 0 ]; then
+          eval "$__conda_setup"
+      else
+          if [ -f "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
+              . "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh"
+          else
+              export PATH="/opt/homebrew/Caskroom/miniconda/base/bin:$PATH"
+          fi
+      fi
+      unset __conda_setup
+      # <<< conda initialize <<<
+      conda "$@"
+    }
+
+    # # nvm
+    # export NVM_DIR="$HOME/.nvm"
+    # [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
+    # [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+
+    # Lazy-load nvm
+    nvm() {
+      unset -f nvm
+      export NVM_DIR="$HOME/.nvm"
+      [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && . "/opt/homebrew/opt/nvm/nvm.sh"
+      [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && . "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+      nvm "$@"
+    }
 
     # pnpm
     export PNPM_HOME="$HOME/Library/pnpm"
@@ -222,7 +250,10 @@ if [ -f ~/.bash_profile ]; then
     source ~/.bash_profile
 fi
 
-# SKDMAN
-#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
-export SDKMAN_DIR="$HOME/.sdkman"
-[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+# Lazy-load SDKMAN
+sdk() {
+  unset -f sdk
+  export SDKMAN_DIR="$HOME/.sdkman"
+  [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+  sdk "$@"
+}
