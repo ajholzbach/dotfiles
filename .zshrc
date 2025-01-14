@@ -258,3 +258,8 @@ sdk() {
   [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
   sdk "$@"
 }
+
+# Compile zshrc if modified or doesn't exist
+if [[ ! -f "$HOME/.zshrc.zwc" || "$HOME/.zshrc" -nt "$HOME/.zshrc.zwc" ]]; then
+  zcompile "$HOME/.zshrc"
+fi
