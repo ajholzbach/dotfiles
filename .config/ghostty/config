@@ -4,4 +4,5 @@ auto-update-channel = tip
 window-width = 128
 window-height = 36
 macos-titlebar-style = tabs
+confirm-close-surface = false
 
