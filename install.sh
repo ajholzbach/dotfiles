@@ -181,6 +181,11 @@ git config --global core.excludesfile ~/.gitignore_global
 
 echo "Dotfiles installation complete!"
 
+if command_exists bat; then
+    echo "Building bat cache..."
+    bat cache --build
+fi
+
 if command_exists zsh; then
     echo "Changing shell to zsh..."
     exec zsh -l
