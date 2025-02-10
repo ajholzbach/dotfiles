@@ -168,46 +168,52 @@ export CONDA_AUTO_ACTIVATE_BASE=false
 
 # OSX
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # Lazy-load conda
-    conda() {
-      unset -f conda
-      # >>> conda initialize >>>
-      __conda_setup="$('/opt/homebrew/Caskroom/miniconda/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-      if [ $? -eq 0 ]; then
-          eval "$__conda_setup"
-      else
-          if [ -f "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
-              . "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh"
-          else
-              export PATH="/opt/homebrew/Caskroom/miniconda/base/bin:$PATH"
-          fi
-      fi
-      unset __conda_setup
-      # <<< conda initialize <<<
-      conda "$@"
-    }
+    # Lazy-load conda if installed
+    if [ -d "/opt/homebrew/Caskroom/miniconda/base" ]; then
+        conda() {
+        unset -f conda
+        # >>> conda initialize >>>
+        __conda_setup="$('/opt/homebrew/Caskroom/miniconda/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+        if [ $? -eq 0 ]; then
+            eval "$__conda_setup"
+        else
+            if [ -f "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
+                . "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh"
+            else
+                export PATH="/opt/homebrew/Caskroom/miniconda/base/bin:$PATH"
+            fi
+        fi
+        unset __conda_setup
+        # <<< conda initialize <<<
+        conda "$@"
+        }
+    fi
 
-    # Lazy-load nvm
-    nvm() {
-      unset -f nvm
-      export NVM_DIR="$HOME/.nvm"
-      [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && . "/opt/homebrew/opt/nvm/nvm.sh"
-      [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && . "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
-      nvm "$@"
-    }
+    # Lazy-load nvm if installed
+    if [ -d "$HOME/.nvm" ] || [ -s "/opt/homebrew/opt/nvm/nvm.sh" ]; then
+        nvm() {
+        unset -f nvm
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && . "/opt/homebrew/opt/nvm/nvm.sh"
+        [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && . "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+        nvm "$@"
+        }
+    fi
 
-    # Lazy-load pnpm
-    pnpm() {
-      unset -f pnpm
-      # pnpm
-      export PNPM_HOME="$HOME/Library/pnpm"
-      case ":$PATH:" in
-      *":$PNPM_HOME:"*) ;;
-      *) export PATH="$PNPM_HOME:$PATH" ;;
-      esac
-      # pnpm end
-      command pnpm "$@"
-    }
+    # Lazy-load pnpm if installed
+    if command -v pnpm &> /dev/null || [ -d "$HOME/Library/pnpm" ]; then
+        pnpm() {
+        unset -f pnpm
+        # pnpm
+        export PNPM_HOME="$HOME/Library/pnpm"
+        case ":$PATH:" in
+        *":$PNPM_HOME:"*) ;;
+        *) export PATH="$PNPM_HOME:$PATH" ;;
+        esac
+        # pnpm end
+        command pnpm "$@"
+        }
+    fi
 
     # Add alias for opening idea detached
     alias idead="open -a open -a IntelliJ\ IDEA"
@@ -251,13 +257,11 @@ if [ -f ~/.bash_profile ]; then
     source ~/.bash_profile
 fi
 
-# Lazy-load SDKMAN
-sdk() {
-  unset -f sdk
+# Load SDKMAN if installed
+if [ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
   export SDKMAN_DIR="$HOME/.sdkman"
   [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
-  sdk "$@"
-}
+fi
 
 # Compile zshrc if modified or doesn't exist
 if [[ ! -f "$HOME/.zshrc.zwc" || "$HOME/.zshrc" -nt "$HOME/.zshrc.zwc" ]]; then

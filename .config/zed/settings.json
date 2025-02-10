@@ -8,9 +8,10 @@
 // command palette
 {
   "assistant": {
+    "icon_theme": "Catppuccin Mocha",
     "default_model": {
       "provider": "copilot_chat",
-      "model": "gpt-4o"
+      "model": "o3-mini"
     },
     "version": "2"
   },
