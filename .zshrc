@@ -217,34 +217,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 
     # Add alias for opening idea detached
     alias idead="open -a open -a IntelliJ\ IDEA"
-
-    # Add gh copilot cli alias if it exists
-    if command -v gh &> /dev/null && gh extension list | grep -q 'copilot'; then
-        eval "$(gh copilot alias -- zsh)"
-    fi
-
-    # Add thefuck alias if it exists
-    if command -v thefuck &> /dev/null; then
-        eval "$(thefuck --alias)"
-    fi
-
-    # Add zoxide if it exists
-    if command -v zoxide &> /dev/null; then
-        eval "$(zoxide init zsh)"
-        alias cd='z'
-        alias cdo='builtin cd'
-    fi
-
-    # Add fzf if it exists and set catppuccin theme
-    if command -v fzf &> /dev/null; then
-        source <(fzf --zsh)
-        export FZF_DEFAULT_OPTS=" \
-        --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
-        --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
-        --color=marker:#b4befe,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8 \
-        --color=selected-bg:#45475a \
-        --multi"
-    fi
 fi
 
 # # Set XDG_CONFIG_HOME if not already set
@@ -261,6 +233,34 @@ fi
 if [ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
   export SDKMAN_DIR="$HOME/.sdkman"
   [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+fi
+
+# Add gh copilot cli alias if it exists
+if command -v gh &> /dev/null && gh extension list | grep -q 'copilot'; then
+    eval "$(gh copilot alias -- zsh)"
+fi
+
+# Add thefuck alias if it exists
+if command -v thefuck &> /dev/null; then
+    eval "$(thefuck --alias)"
+fi
+
+# Add zoxide if it exists
+if command -v zoxide &> /dev/null; then
+    eval "$(zoxide init zsh)"
+    alias cd='z'
+    alias cdo='builtin cd'
+fi
+
+# Add fzf if it exists and set catppuccin theme
+if command -v fzf &> /dev/null; then
+    source <(fzf --zsh)
+    export FZF_DEFAULT_OPTS=" \
+    --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+    --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+    --color=marker:#b4befe,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8 \
+    --color=selected-bg:#45475a \
+    --multi"
 fi
 
 # Compile zshrc if modified or doesn't exist
