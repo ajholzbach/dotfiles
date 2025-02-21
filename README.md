@@ -24,6 +24,7 @@ Link to oh-my-zsh
 - `curl`: To install [`oh-my-zsh`](https://ohmyz.sh/)
 
 ## What it does
+![Sample Command Line](assets/sample_command_line.png)
 - Installs [`oh-my-zsh`](https://ohmyz.sh/)
     - Installs the [`zsh-autosuggestions`](https://github.com/zsh-users/zsh-autosuggestions) plugin
     - Installs the [`zsh-syntax-highlighting`](https://github.com/zsh-users/zsh-syntax-highlighting) plugin
