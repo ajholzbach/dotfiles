@@ -10,8 +10,8 @@
   "assistant": {
     "icon_theme": "Catppuccin Mocha",
     "default_model": {
-      "provider": "copilot_chat",
-      "model": "o3-mini"
+      "provider": "zed.dev",
+      "model": "claude-3-7-sonnet-latest"
     },
     "version": "2"
   },

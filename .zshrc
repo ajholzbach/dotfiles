@@ -252,6 +252,11 @@ if command -v zoxide &> /dev/null; then
     alias cdo='builtin cd'
 fi
 
+# Add bat alias if it exists
+if command -v bat &> /dev/null; then
+    alias cat='bat'
+fi
+
 # Add fzf if it exists and set catppuccin theme
 if command -v fzf &> /dev/null; then
     source <(fzf --zsh)
