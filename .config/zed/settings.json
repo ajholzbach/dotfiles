@@ -7,6 +7,10 @@
 // custom settings, run `zed: open default settings` from the
 // command palette
 {
+  "project_panel": {
+    "dock": "right"
+  },
+  "icon_theme": "Catppuccin Mocha",
   "assistant": {
     "icon_theme": "Catppuccin Mocha",
     "default_model": {
