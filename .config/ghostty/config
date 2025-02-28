@@ -5,5 +5,5 @@ window-width = 128
 window-height = 36
 macos-titlebar-style = tabs
 confirm-close-surface = false
+shell-integration-features = sudo
 scrollback-limit = 20000000
-
