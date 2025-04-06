@@ -229,15 +229,14 @@ if [ -f ~/.bash_profile ]; then
     source ~/.bash_profile
 fi
 
+# Set default system editor to vim
+export EDITOR=vim
+export VISUAL=vim
+
 # Load SDKMAN if installed
 if [ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
   export SDKMAN_DIR="$HOME/.sdkman"
   [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
-fi
-
-# Add gh copilot cli alias if it exists
-if command -v gh &> /dev/null && gh extension list | grep -q 'copilot'; then
-    eval "$(gh copilot alias -- zsh)"
 fi
 
 # Add thefuck alias if it exists
