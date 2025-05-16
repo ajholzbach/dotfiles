@@ -1,6 +1,6 @@
 theme = catppuccin-mocha
 font-family = MesloLGS NF
-auto-update-channel = tip
+auto-update-channel = stable
 window-width = 128
 window-height = 36
 macos-titlebar-style = tabs
