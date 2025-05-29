@@ -3,7 +3,7 @@ set -e # Exit on error
 
 # Dotfiles paths (relative to the dotfiles repo)
 # Add any new dotfiles here to track them
-DOTFILES=(".vimrc" ".zshrc" ".p10k.zsh" ".gitignore_global" ".condarc" ".config/zed" ".config/bat" ".config/btop" ".config/thefuck" ".config/lazygit" ".config/ghostty")
+DOTFILES=(".vimrc" ".zshrc" ".zprofile" ".p10k.zsh" ".gitignore_global" ".condarc" ".config/zed" ".config/bat" ".config/btop" ".config/thefuck" ".config/lazygit" ".config/ghostty")
 
 # Dynamically determine the dotfiles repo location
 DOTFILES_REPO=$(dirname "$(realpath "$0")")
