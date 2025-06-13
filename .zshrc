@@ -239,11 +239,6 @@ if [ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
   [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
 fi
 
-# Add thefuck alias if it exists
-if command -v thefuck &> /dev/null; then
-    eval "$(thefuck --alias)"
-fi
-
 # Add zoxide if it exists
 if command -v zoxide &> /dev/null; then
     eval "$(zoxide init zsh)"

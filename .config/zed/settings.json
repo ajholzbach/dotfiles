@@ -11,11 +11,10 @@
     "dock": "right"
   },
   "icon_theme": "Catppuccin Mocha",
-  "assistant": {
-    "icon_theme": "Catppuccin Mocha",
+  "agent": {
     "default_model": {
       "provider": "zed.dev",
-      "model": "claude-3-7-sonnet-latest"
+      "model": "claude-sonnet-4"
     },
     "version": "2"
   },
@@ -24,8 +23,8 @@
     "metrics": false
   },
   "vim_mode": false,
-  "ui_font_size": 16,
-  "buffer_font_size": 16,
+  "ui_font_size": 14,
+  "buffer_font_size": 14,
   "theme": {
     "mode": "dark",
     "light": "Catppuccin Latte",

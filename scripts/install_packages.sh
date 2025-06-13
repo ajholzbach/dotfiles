@@ -1,16 +1,13 @@
 #!/bin/bash
-set -e # Exit on error
+set -e
 
-# Function to check if a command exists
 command_exists () {
     type "$1" &> /dev/null ;
 }
 
-# List of packages to install
 PACKAGES_TO_INSTALL=("vim" "neofetch" "wget")
 PACKAGES_TO_INSTALL_STRING="${PACKAGES_TO_INSTALL[@]}"
 
-# Detecting the platform and package manager
 echo "Installing packages..."
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     if command_exists apt ; then
@@ -42,11 +39,9 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     brew install $PACKAGES_TO_INSTALL_STRING
 fi
 
-# Install SDKMAN if not installed
 if [ ! -d "$HOME/.sdkman" ]; then
     echo "Installing SDKMAN..."
     curl -s "https://get.sdkman.io" | bash
-    # Initialize SDKMAN
     source "$HOME/.sdkman/bin/sdkman-init.sh"
 else
     echo "SDKMAN already installed."
