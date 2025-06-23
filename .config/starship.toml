@@ -1,3 +1,7 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
+format = '$os$all'
+
 [aws]
 symbol = "  "
 
@@ -102,6 +106,10 @@ symbol = " "
 
 [ocaml]
 symbol = " "
+
+[os]
+disabled = false
+style = "none"
 
 [os.symbols]
 Alpaquita = " "
