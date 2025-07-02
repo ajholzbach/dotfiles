@@ -1,4 +1,4 @@
-function conda
+function conda --wraps conda
     functions --erase conda
     # >>> conda initialize >>>
     if test -f /opt/homebrew/Caskroom/miniconda/base/bin/conda

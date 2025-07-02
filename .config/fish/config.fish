@@ -5,9 +5,4 @@ if status is-interactive
         echo "source (starship init fish --print-full-init | psub)" | source
         enable_transience
     end
-
-    # zoxide
-    if type -q zoxide
-        zoxide init --cmd cd fish | source
-    end
 end
