@@ -1,4 +1,5 @@
 theme = catppuccin-mocha
+window-colorspace = display-p3
 font-family = MesloLGS NF
 auto-update-channel = stable
 window-width = 128
