@@ -19,5 +19,7 @@ function fish_greeting
     # test -n "$fish_greeting"
     # and echo $fish_greeting
 
-    fish_logo
+    if functions -q fish_logo
+        fish_logo
+    end
 end
