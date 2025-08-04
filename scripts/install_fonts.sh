@@ -14,10 +14,6 @@ FONT_NAMES=(
     "MesloLGS NF Bold Italic.ttf"
 )
 
-command_exists() {
-    type "$1" &> /dev/null
-}
-
 install_fonts_mac() {
     echo "Installing fonts on macOS..."
     FONT_DIR="$HOME/Library/Fonts"

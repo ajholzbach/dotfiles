@@ -46,9 +46,6 @@ set shiftwidth=4
 " Set tab width to 4 columns.
 set tabstop=4
 
-" Use tab characters when pressing tab.
-set noexpandtab
-
 " Set autoindent to automatically indent the next line.
 set autoindent
 

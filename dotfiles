@@ -1,0 +1,19 @@
+# Dotfiles configuration
+# List of dotfiles to track (relative to the dotfiles repo)
+# Add any new dotfiles here to track them
+
+DOTFILES=(
+    ".vimrc"
+    ".zshrc" 
+    ".zprofile"
+    ".p10k.zsh"
+    ".gitignore_global"
+    ".condarc"
+    ".config/zed"
+    ".config/bat"
+    ".config/btop"
+    ".config/lazygit"
+    ".config/ghostty"
+    ".config/fish"
+    ".config/starship.toml"
+)
