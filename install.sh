@@ -186,7 +186,10 @@ if command_exists bat; then
     bat cache --build
 fi
 
-if command_exists zsh; then
+if command_exists fish; then
+    echo "Changing shell to fish..."
+    exec fish -l
+elif command_exists zsh; then
     echo "Changing shell to zsh..."
     exec zsh -l
 else
