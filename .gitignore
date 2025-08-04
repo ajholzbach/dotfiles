@@ -6,7 +6,13 @@
 .config/zed/embeddings/
 .config/zed/prompts/
 .config/zed/conversations/
+.config/fish/completions/*
+.config/fish/conf.d/*
 .config/fish/fish_history
 .config/fish/fish_variables
+.config/fish/functions/*
 .config/fish/generated_completions/
+.config/fish/themes/*
 /temp/
+
+!.config/fish/functions/fisher_setup.fish
