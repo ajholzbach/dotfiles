@@ -1,9 +1,8 @@
 # Disable paging
 --paging=never
 
-# Disable line numbers
---style=plain
+# Always colorize output
+--color=always
 
 # Set the syntax highlighting theme
 --theme="Catppuccin Mocha"
-
