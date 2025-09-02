@@ -19,4 +19,12 @@ if status is-interactive
         echo "source (starship init fish --print-full-init | psub)" | source
         enable_transience
     end
+    # mise shell integration
+    if type -q mise
+        # Turn off auto-activation of mise environment to avoid double activation
+        if not set -q MISE_FISH_AUTO_ACTIVATE
+            set -Ux MISE_FISH_AUTO_ACTIVATE 0
+        end
+        mise activate fish | source
+    end
 end
