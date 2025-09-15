@@ -1,4 +1,4 @@
-theme = catppuccin-mocha
+theme = Catppuccin Mocha
 window-colorspace = display-p3
 font-family = MesloLGS NF
 auto-update-channel = stable
