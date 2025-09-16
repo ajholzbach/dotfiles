@@ -4,7 +4,7 @@
 
 DOTFILES=(
     ".vimrc"
-    ".zshrc" 
+    ".zshrc"
     ".zprofile"
     ".p10k.zsh"
     ".gitignore_global"
@@ -14,6 +14,8 @@ DOTFILES=(
     ".config/btop"
     ".config/lazygit"
     ".config/ghostty"
-    ".config/fish"
+    ".config/fish/functions"
+    ".config/fish/config.fish"
+    ".config/fish/fish_plugins"
     ".config/starship.toml"
 )
