@@ -15,10 +15,11 @@
   },
   "icon_theme": "Catppuccin Mocha",
   "agent": {
+    "dock": "left",
     "default_model": {
       "provider": "zed.dev",
       "model": "claude-sonnet-4"
-    },
+    }
   },
   "telemetry": {
     "diagnostics": false,
