@@ -3,6 +3,10 @@ if not set -q XDG_CONFIG_HOME
     set -xg XDG_CONFIG_HOME $HOME/.config
 end
 
+# Add to PATH
+contains /usr/local/bin $fish_user_paths; or fish_add_path -U /usr/local/bin
+contains $HOME/.local/bin $fish_user_paths; or fish_add_path -U $HOME/.local/bin
+
 # Add Homebrew to PATH if installed
 if test -x /opt/homebrew/bin/brew
     contains /opt/homebrew/bin $fish_user_paths; or fish_add_path -U /opt/homebrew/bin
