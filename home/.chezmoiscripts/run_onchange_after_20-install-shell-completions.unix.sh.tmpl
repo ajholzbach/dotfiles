@@ -1,0 +1,12 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+if command -v fish >/dev/null 2>&1 && command -v chezmoi >/dev/null 2>&1; then
+    echo "Installing fish completions for chezmoi..."
+    mkdir -p "$XDG_CONFIG_HOME/fish/completions"
+    chezmoi completion fish --output="$XDG_CONFIG_HOME/fish/completions/chezmoi.fish"
+fi
+{{- end }}

@@ -1,6 +1,6 @@
 {{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Install antidote zsh plugin manager if not already installed
 ANTIDOTE_DIR="$HOME/.antidote"
