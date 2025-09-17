@@ -1,0 +1,15 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/bin/bash
+set -e
+
+# Install antidote zsh plugin manager if not already installed
+ANTIDOTE_DIR="$HOME/.antidote"
+
+if [ ! -d "$ANTIDOTE_DIR" ]; then
+    echo "Installing antidote zsh plugin manager..."
+    git clone --depth=1 https://github.com/mattmc3/antidote.git "$ANTIDOTE_DIR"
+    echo "Antidote installed successfully at $ANTIDOTE_DIR"
+else
+    echo "Antidote is already installed at $ANTIDOTE_DIR"
+fi
+{{- end }}
