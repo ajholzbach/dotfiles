@@ -11,8 +11,6 @@ DOTFILES=(
     ".condarc"
     ".config/zed"
     ".config/bat"
-    ".config/btop"
-    ".config/lazygit"
     ".config/ghostty"
     ".config/fish/functions"
     ".config/fish/config.fish"
