@@ -1,11 +1,15 @@
 # Set XDG_CONFIG_HOME
 if not set -q XDG_CONFIG_HOME
-    set -x XDG_CONFIG_HOME $HOME/.config
+    set -xg XDG_CONFIG_HOME $HOME/.config
 end
 
 # Add Homebrew to PATH if installed
 if test -x /opt/homebrew/bin/brew
     contains /opt/homebrew/bin $fish_user_paths; or fish_add_path -U /opt/homebrew/bin
+    # Set concurrent downloads for Homebrew if not already set
+    if not set -q HOMEBREW_DOWNLOAD_CONCURRENCY
+        set -xg HOMEBREW_DOWNLOAD_CONCURRENCY auto
+    end
 end
 
 if status is-interactive
