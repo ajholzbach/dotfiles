@@ -95,7 +95,7 @@ fi
 
 # Add bat alias if it exists
 if command -v bat &> /dev/null; then
-    alias cat='bat'
+    alias cat='bat --plain'
 fi
 
 # Add fzf if it exists and set catppuccin theme

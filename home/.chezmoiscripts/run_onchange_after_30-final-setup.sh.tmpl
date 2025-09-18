@@ -9,8 +9,6 @@ fi
 
 # Rebuild bat cache if bat is available
 if command -v bat >/dev/null 2>&1; then
-    bat cache --build || true
+    bat cache --build
 fi
-
-exit 0
 {{- end }}

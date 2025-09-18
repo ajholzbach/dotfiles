@@ -1,5 +1,6 @@
-# Oh My Zsh git plugin
-getantidote/use-omz kind:defer
+# Oh My Zsh plugins
+getantidote/use-omz
+ohmyzsh/ohmyzsh path:lib
 ohmyzsh/ohmyzsh path:plugins/git kind:defer
 
 # Zsh plugins
