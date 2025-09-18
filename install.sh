@@ -108,31 +108,31 @@ for cmd in git curl; do
 done
 
 # Install Oh My Zsh if not installed
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
-    echo "Installing Oh My Zsh..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-fi
+# if [ ! -d "$HOME/.oh-my-zsh" ]; then
+#     echo "Installing Oh My Zsh..."
+#     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+# fi
 
 # Install Oh My Zsh plugins
-for plugin in zsh-syntax-highlighting zsh-autosuggestions; do
-    if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/$plugin" ]; then
-        echo "Installing $plugin plugin..."
-        git clone "https://github.com/zsh-users/$plugin.git" "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/$plugin"
-    fi
-done
+# for plugin in zsh-syntax-highlighting zsh-autosuggestions; do
+#     if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/$plugin" ]; then
+#         echo "Installing $plugin plugin..."
+#         git clone "https://github.com/zsh-users/$plugin.git" "${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/$plugin"
+#     fi
+# done
 
 # Install Powerlevel10k if not installed
-if [ ! -d "$HOME/.oh-my-zsh/custom/themes/powerlevel10k" ]; then
-    echo "Installing Powerlevel10k theme..."
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
-fi
+# if [ ! -d "$HOME/.oh-my-zsh/custom/themes/powerlevel10k" ]; then
+#     echo "Installing Powerlevel10k theme..."
+#     git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
+# fi
 
 # Install Catppuccin Mocha theme for vim if not installed
-if [ ! -f "$HOME/.vim/colors/catppuccin_mocha.vim" ]; then
-    echo "Installing Catppuccin Mocha theme for vim..."
-    mkdir -p "$HOME/.vim/colors"
-    cp "$DOTFILES_REPO/catppuccin/catppuccin_mocha.vim" "$HOME/.vim/colors/"
-fi
+# if [ ! -f "$HOME/.vim/colors/catppuccin_mocha.vim" ]; then
+#     echo "Installing Catppuccin Mocha theme for vim..."
+#     mkdir -p "$HOME/.vim/colors"
+#     cp "$DOTFILES_REPO/catppuccin/catppuccin_mocha.vim" "$HOME/.vim/colors/"
+# fi
 
 # Install dotfiles or restore backups
 if [ "$RESTORE_BACKUPS" = true ]; then

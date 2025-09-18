@@ -6,7 +6,6 @@ DOTFILES=(
     ".vimrc"
     ".zshrc"
     ".zprofile"
-    ".p10k.zsh"
     ".gitignore_global"
     ".condarc"
     ".config/zed"
