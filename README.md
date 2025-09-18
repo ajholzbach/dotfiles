@@ -1,89 +1,41 @@
 # dotfiles
 
-A repo to store my dotfiles, a comprehensive install script, and a bit more
-
-## Contents
-
-- `install.sh`: Installs dotfiles and other packages (if specified)
-- `.zshrc`: Zsh config
-- `.zprofile`: Zsh profile
-- `.vimrc`: Vim config
-- `.p10k.zsh`: Powerlevel10k config
-- `.gitignore_global`: Global gitignore file
-- `.condarc`: Conda config
-- `.config/bat/`: Config for the `bat` command (cat with catppuccin themed syntax highlighting)
-- `.config/btop/`: Config for the `btop` command (better top, also with catppuccin theme)
-- `.config/lazygit/`: Config for the `lazygit` command (with catppuccin theme)
-- `.config/fish/`: Config for fish shell
-- `.config/starship.toml`: Config for starship prompt
-- `.config/zed/`: Config for [zed](https://zed.dev/) editor (with catppuccin theme and MesloLGS NF font set)
-- `.config/ghostty/`: Config for ghostty terminal emulator
-- `scripts`: Folder for miscellaneous useful scripts
-- `macOS`: Folder for macOS specific install scripts and icons
-- `backup`: Folder for old scripts
-
-## Requirements
-
-- `git`: To clone this repo
-  Link to oh-my-zsh
-- `curl`: To install [`oh-my-zsh`](https://ohmyz.sh/)
-
-## What it does
+Personal dotfiles managed with [Chezmoi](https://github.com/twpayne/chezmoi). The active, up-to-date configuration lives under `home/` and is applied to `$HOME` via Chezmoi.
 
 ![Sample Command Line](assets/sample_command_line_2.png)
 
-- Installs [`oh-my-zsh`](https://ohmyz.sh/)
+## Status
 
-  - Installs the [`zsh-autosuggestions`](https://github.com/zsh-users/zsh-autosuggestions) plugin
-  - Installs the [`zsh-syntax-highlighting`](https://github.com/zsh-users/zsh-syntax-highlighting) plugin
+> Deprecated: `install.sh` and the legacy `dotfiles` listing are no longer used. They are kept for historical reference only. All current dotfiles are defined in `home/` and managed by Chezmoi.
 
-- Installs [`powerlevel10k`](https://github.com/romkatv/powerlevel10k) theme for `oh-my-zsh`
+## Layout
 
-  - Install the following Meslo Nerd Fonts for best results in the terminal:
-  - [MesloLGS NF Regular.ttf](https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf)
-  - [MesloLGS NF Bold.ttf](https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf)
-  - [MesloLGS NF Italic.ttf](https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf)
-  - [MesloLGS NF Bold Italic.ttf](https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf)
-  - You can also install the fonts by running the following script:
+- `home/`: Source of truth for dotfiles used by Chezmoi (mirrors `$HOME` layout)
+- `macOS/`: macOS-specific helpers and icons
+- `scripts/`: Miscellaneous helpful scripts (not part of Chezmoi state)
+- `catppuccin/`: Theme assets (e.g., Vim colorscheme, iTerm profile)
+- `assets/`: Screenshots and images
+- `backup/`: Legacy scripts and archived content
+- Legacy root files like `.vimrc`, `.zshrc`, `.p10k.zsh`, etc. remain for reference; Chezmoi-managed versions live in `home/` (e.g., `home/dot_zshrc`).
 
-  ```bash
-  cd ~/.dotfiles/scripts
-  ./install_fonts.sh
-  ```
+## Install (Linux or macOS)
 
-- Installs the [catppuccin_mocha](https://github.com/catppuccin/vim) theme for `vim`
-
-- Copies dotfiles to the home directory
-  - Backs up existing dotfiles if they exist
-  - Backups can be found in the home directory with the extension `.bak`
-
-## Installation
-
-- Running the following commands will clone this repo and run the install script
+- One-liner:
 
 ```bash
-cd ~
-git clone https://github.com/ajholzbach/dotfiles.git ~/.dotfiles
-cd ~/.dotfiles
-./install.sh
+sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply ajholzbach
 ```
 
-### Optional
-
-- To install the recommended fonts for `powerlevel10k`, run the following script:
+- With Homebrew:
 
 ```bash
-cd ~/.dotfiles/scripts
-./install_fonts.sh
+brew install chezmoi
+chezmoi init --apply ajholzbach
 ```
 
-## Removal
+This will clone the repo as a Chezmoi source and immediately apply the files from `home/` into your `$HOME`.
 
-- This will remove the dotfiles and restore the backups (if they exist) and restore original files from backups
+## Notes
 
-```bash
-cd ~/.dotfiles
-./install.sh -r
-cd ..
-rm -rf .dotfiles
-```
+- If you previously used `install.sh`, prefer a fresh setup with Chezmoi as above. The script is unmaintained.
+- Explore `home/.chezmoiscripts/` for any on-apply hooks and bootstrap steps handled by Chezmoi.
