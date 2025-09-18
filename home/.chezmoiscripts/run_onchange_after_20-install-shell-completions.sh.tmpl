@@ -15,6 +15,11 @@ if command -v fish >/dev/null 2>&1; then
     if command -v mise >/dev/null 2>&1; then
         echo "Installing fish completions for mise..."
         mise completion fish > "$XDG_CONFIG_HOME/fish/completions/mise.fish"
+        # Check if usage is NOT installed
+        if ! command -v usage >/dev/null 2>&1; then
+            echo "Installing usage for mise completions..."
+            mise use -g usage -y
+        fi
     fi
 
     if command -v bat >/dev/null 2>&1; then
