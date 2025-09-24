@@ -8,3 +8,4 @@ macos-titlebar-style = tabs
 confirm-close-surface = false
 shell-integration-features = sudo
 scrollback-limit = 20000000
+keybind = shift+enter=text:\x1b\r
