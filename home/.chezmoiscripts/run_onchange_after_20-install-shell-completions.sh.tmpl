@@ -36,5 +36,10 @@ if command -v fish >/dev/null 2>&1; then
         echo "Installing fish completions for fd..."
         fd --gen-completions fish > "$XDG_CONFIG_HOME/fish/completions/fd.fish"
     fi
+
+    if command -v orb >/dev/null 2>&1; then
+        echo "Installing fish completions for orb..."
+        orb completion fish > "$XDG_CONFIG_HOME/fish/completions/orb.fish"
+    fi
 fi
 {{- end }}

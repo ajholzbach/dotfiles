@@ -35,4 +35,8 @@ if status is-interactive
         end
         mise activate fish | source
     end
+    # OrbStack shell integration
+    if type -q orb
+        source ~/.orbstack/shell/init2.fish 2>/dev/null || :
+    end
 end
