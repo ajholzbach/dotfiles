@@ -7,19 +7,12 @@
 // custom settings, run `zed: open default settings` from the
 // command palette
 {
-  "features": {
-    "edit_prediction_provider": "copilot"
-  },
   "project_panel": {
     "dock": "right"
   },
   "icon_theme": "Catppuccin Mocha",
   "agent": {
-    "dock": "left",
-    "default_model": {
-      "provider": "zed.dev",
-      "model": "claude-sonnet-4"
-    }
+    "dock": "left"
   },
   "telemetry": {
     "diagnostics": false,
