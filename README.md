@@ -11,6 +11,8 @@ Personal dotfiles managed with [Chezmoi](https://github.com/twpayne/chezmoi). Th
 ## Layout
 
 - `home/`: Source of truth for dotfiles used by Chezmoi (mirrors `$HOME` layout)
+- `home/.chezmoiscripts/`: Automated installation scripts for fonts, Starship, Antidote, etc.
+- `tests/`: Docker-based test suite for Ubuntu installation validation
 - `macOS/`: macOS-specific helpers and icons
 - `scripts/`: Miscellaneous helpful scripts (not part of Chezmoi state)
 - `catppuccin/`: Theme assets (e.g., Vim colorscheme, iTerm profile)
@@ -57,7 +59,7 @@ brew install chezmoi
 chezmoi init --apply ajholzbach
 ```
 
-This will clone the repo as a Chezmoi source and immediately apply the files from `home/` into your `$HOME`.
+This will clone the repo as a Chezmoi source and immediately apply the files from `home/` into your `$HOME`. Chezmoi scripts will automatically install Homebrew (macOS), fonts, Starship, and Antidote.
 
 ## Recommended Packages
 
@@ -66,17 +68,7 @@ To get the full experience from these dotfiles, consider installing these option
 ### Essential Tools
 
 #### [Starship](https://starship.rs/) (Cross-shell prompt)
-**Why**: Provides the customized prompt with OS detection, git status, and development environment info.
-```bash
-# macOS
-brew install starship
-
-# Linux (using mise)
-mise install starship
-
-# Alternative: Direct install
-curl -sS https://starship.rs/install.sh | sh
-```
+**Installed automatically by Chezmoi scripts.** Provides the customized prompt with OS detection, git status, and development environment info.
 
 #### [Fish Shell](https://github.com/fish-shell/fish-shell)
 **Why**: Modern shell with excellent autocompletion and scripting. Includes full configuration with Fisher plugin manager.
@@ -129,6 +121,16 @@ After installing Fish, run once to set it as your default shell:
 echo $(which fish) | sudo tee -a /etc/shells
 chsh -s $(which fish)
 ```
+
+## Testing
+
+Test the dotfiles installation on Ubuntu using Docker:
+
+```bash
+./tests/test.sh
+```
+
+See `tests/README.md` for details.
 
 ## Notes
 

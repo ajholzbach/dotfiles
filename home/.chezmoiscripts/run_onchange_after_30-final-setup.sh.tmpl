@@ -2,13 +2,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Configure global gitignore if present
-if [ -f "$HOME/.gitignore_global" ]; then
+if command -v git >/dev/null 2>&1 && [ -f "$HOME/.gitignore_global" ]; then
     git config --global core.excludesfile "$HOME/.gitignore_global" || true
 fi
 
-# Rebuild bat cache if bat is available
 if command -v bat >/dev/null 2>&1; then
-    bat cache --build
+    bat cache --build >/dev/null 2>&1 || true
 fi
 {{- end }}

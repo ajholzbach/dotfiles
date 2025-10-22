@@ -1,3 +1,4 @@
+.claude/
 .config/gh/
 .config/iterm2/
 .config/gh-copilot/
@@ -16,3 +17,4 @@
 /temp/
 
 !.config/fish/functions/fisher_setup.fish
+

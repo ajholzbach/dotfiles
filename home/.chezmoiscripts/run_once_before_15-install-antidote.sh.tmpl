@@ -1,15 +1,21 @@
 {{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Install antidote zsh plugin manager if not already installed
+if ! command -v git >/dev/null 2>&1; then
+    echo "Error: git is required but not installed"
+    echo "Please install git and try again"
+    exit 1
+fi
+
 ANTIDOTE_DIR="$HOME/.antidote"
 
-if [ ! -d "$ANTIDOTE_DIR" ]; then
-    echo "Installing antidote zsh plugin manager..."
-    git clone --depth=1 https://github.com/mattmc3/antidote.git "$ANTIDOTE_DIR"
-    echo "Antidote installed successfully at $ANTIDOTE_DIR"
-else
+if [ -f "$ANTIDOTE_DIR/antidote.zsh" ]; then
     echo "Antidote is already installed at $ANTIDOTE_DIR"
+    exit 0
 fi
+
+echo "Installing antidote zsh plugin manager..."
+git clone --depth=1 https://github.com/mattmc3/antidote.git "$ANTIDOTE_DIR"
+echo "Antidote installed successfully at $ANTIDOTE_DIR"
 {{- end }}

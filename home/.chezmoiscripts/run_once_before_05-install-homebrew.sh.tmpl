@@ -1,0 +1,26 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v brew >/dev/null 2>&1; then
+    echo "Homebrew is already installed"
+    exit 0
+fi
+
+echo "Installing Homebrew..."
+echo "Note: You may be prompted for your password (sudo is required)"
+NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+HOMEBREW_PREFIX="/opt/homebrew"
+if [[ "$(uname -m)" == "x86_64" ]]; then
+    HOMEBREW_PREFIX="/usr/local"
+fi
+
+if [[ -x "$HOMEBREW_PREFIX/bin/brew" ]]; then
+    eval "$($HOMEBREW_PREFIX/bin/brew shellenv)"
+    echo "Homebrew installed successfully"
+else
+    echo "Error: Homebrew installation completed but brew command not found"
+    exit 1
+fi
+{{- end }}

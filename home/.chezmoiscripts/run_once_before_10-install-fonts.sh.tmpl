@@ -1,0 +1,70 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v curl >/dev/null 2>&1; then
+    echo "Error: curl is required but not installed"
+    echo "Please install curl and try again"
+    exit 1
+fi
+
+echo "Installing MesloLGS NF fonts..."
+
+FONT_URLS=(
+    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf"
+    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf"
+    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf"
+    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf"
+)
+FONT_NAMES=(
+    "MesloLGS NF Regular.ttf"
+    "MesloLGS NF Bold.ttf"
+    "MesloLGS NF Italic.ttf"
+    "MesloLGS NF Bold Italic.ttf"
+)
+
+{{- if eq .chezmoi.os "darwin" }}
+FONT_DIR="$HOME/Library/Fonts"
+{{- else if eq .chezmoi.os "linux" }}
+FONT_DIR="$HOME/.local/share/fonts"
+{{- end }}
+
+all_fonts_installed=true
+for font_name in "${FONT_NAMES[@]}"; do
+    if [ ! -f "$FONT_DIR/$font_name" ]; then
+        all_fonts_installed=false
+        break
+    fi
+done
+
+if [ "$all_fonts_installed" = true ]; then
+    echo "All MesloLGS NF fonts are already installed in $FONT_DIR"
+    exit 0
+fi
+
+mkdir -p "$FONT_DIR"
+
+for i in "${!FONT_URLS[@]}"; do
+    font_file="$FONT_DIR/${FONT_NAMES[$i]}"
+    if [ -f "$font_file" ]; then
+        echo "Font ${FONT_NAMES[$i]} already exists, skipping..."
+    else
+        echo "Downloading ${FONT_NAMES[$i]}..."
+        if curl -fsSL -o "$font_file" "${FONT_URLS[$i]}"; then
+            echo "Successfully installed ${FONT_NAMES[$i]}"
+        else
+            echo "Failed to download ${FONT_NAMES[$i]}"
+            exit 1
+        fi
+    fi
+done
+
+{{- if eq .chezmoi.os "linux" }}
+if command -v fc-cache >/dev/null 2>&1; then
+    echo "Updating font cache..."
+    fc-cache -f >/dev/null 2>&1 || true
+fi
+{{- end }}
+
+echo "MesloLGS NF fonts installed successfully in $FONT_DIR"
+{{- end }}

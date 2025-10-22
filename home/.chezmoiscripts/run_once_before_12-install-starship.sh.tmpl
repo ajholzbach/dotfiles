@@ -1,0 +1,35 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+if command -v starship >/dev/null 2>&1; then
+    echo "Starship is already installed"
+    exit 0
+fi
+
+{{- if eq .chezmoi.os "darwin" }}
+BREW_CMD=""
+if command -v brew >/dev/null 2>&1; then
+    BREW_CMD="brew"
+elif [[ -x "/opt/homebrew/bin/brew" ]]; then
+    BREW_CMD="/opt/homebrew/bin/brew"
+elif [[ -x "/usr/local/bin/brew" ]]; then
+    BREW_CMD="/usr/local/bin/brew"
+fi
+
+if [[ -n "$BREW_CMD" ]]; then
+    echo "Installing starship with Homebrew..."
+    "$BREW_CMD" install starship
+    exit 0
+fi
+{{- end }}
+
+if ! command -v curl >/dev/null 2>&1; then
+    echo "Error: curl is required but not installed"
+    echo "Please install curl and try again"
+    exit 1
+fi
+
+echo "Installing starship with official installer..."
+curl -sS https://starship.rs/install.sh | sh -s -- --yes
+{{- end }}

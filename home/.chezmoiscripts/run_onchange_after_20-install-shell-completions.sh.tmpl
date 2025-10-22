@@ -9,37 +9,36 @@ if command -v fish >/dev/null 2>&1; then
 
     if command -v chezmoi >/dev/null 2>&1; then
         echo "Installing fish completions for chezmoi..."
-        chezmoi completion fish --output="$XDG_CONFIG_HOME/fish/completions/chezmoi.fish"
+        chezmoi completion fish --output="$XDG_CONFIG_HOME/fish/completions/chezmoi.fish" || true
     fi
 
     if command -v mise >/dev/null 2>&1; then
         echo "Installing fish completions for mise..."
-        mise completion fish > "$XDG_CONFIG_HOME/fish/completions/mise.fish"
-        # Check if usage is NOT installed
+        mise completion fish > "$XDG_CONFIG_HOME/fish/completions/mise.fish" || true
         if ! command -v usage >/dev/null 2>&1; then
             echo "Installing usage for mise completions..."
-            mise use -g usage -y
+            mise use -g usage -y || true
         fi
     fi
 
     if command -v bat >/dev/null 2>&1; then
         echo "Installing fish completions for bat..."
-        bat --completion fish > "$XDG_CONFIG_HOME/fish/completions/bat.fish"
+        bat --completion fish > "$XDG_CONFIG_HOME/fish/completions/bat.fish" || true
     fi
 
     if command -v rg >/dev/null 2>&1; then
         echo "Installing fish completions for rg..."
-        rg --generate complete-fish > "$XDG_CONFIG_HOME/fish/completions/rg.fish"
+        rg --generate complete-fish > "$XDG_CONFIG_HOME/fish/completions/rg.fish" || true
     fi
 
     if command -v fd >/dev/null 2>&1; then
         echo "Installing fish completions for fd..."
-        fd --gen-completions fish > "$XDG_CONFIG_HOME/fish/completions/fd.fish"
+        fd --gen-completions fish > "$XDG_CONFIG_HOME/fish/completions/fd.fish" || true
     fi
 
     if command -v orb >/dev/null 2>&1; then
         echo "Installing fish completions for orb..."
-        orb completion fish > "$XDG_CONFIG_HOME/fish/completions/orb.fish"
+        orb completion fish > "$XDG_CONFIG_HOME/fish/completions/orb.fish" || true
     fi
 fi
 {{- end }}
