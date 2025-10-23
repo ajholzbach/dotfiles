@@ -6,19 +6,16 @@ Personal dotfiles managed with [Chezmoi](https://github.com/twpayne/chezmoi). Th
 
 ## Status
 
-> Deprecated: `install.sh` and the legacy `dotfiles` listing are no longer used. They are kept for historical reference only. All current dotfiles are defined in `home/` and managed by Chezmoi.
+This repository is fully managed by Chezmoi. All active dotfiles are in `home/` and automatically applied to `$HOME`.
 
 ## Layout
 
 - `home/`: Source of truth for dotfiles used by Chezmoi (mirrors `$HOME` layout)
 - `home/.chezmoiscripts/`: Automated installation scripts for fonts, Starship, Antidote, etc.
 - `tests/`: Docker-based test suite for Ubuntu installation validation
-- `macOS/`: macOS-specific helpers and icons
-- `scripts/`: Miscellaneous helpful scripts (not part of Chezmoi state)
-- `catppuccin/`: Theme assets (e.g., Vim colorscheme, iTerm profile)
-- `assets/`: Screenshots and images
-- `backup/`: Legacy scripts and archived content
-- Legacy root files like `.vimrc`, `.zshrc`, `.p10k.zsh`, etc. remain for reference; Chezmoi-managed versions live in `home/` (e.g., `home/dot_zshrc`).
+- `macOS/`: macOS-specific utilities (icons, optional install scripts)
+- `assets/`: Screenshots and images for documentation
+- `archive/`: Historical reference - old dotfiles, installers, and scripts before Chezmoi migration
 
 ## What's Included
 
@@ -134,5 +131,6 @@ See `tests/README.md` for details.
 
 ## Notes
 
-- If you previously used `install.sh`, prefer a fresh setup with Chezmoi as above. The script is unmaintained.
-- Explore `home/.chezmoiscripts/` for any on-apply hooks and bootstrap steps handled by Chezmoi.
+- Legacy files from pre-Chezmoi setup are archived in `archive/` for reference only
+- All active configuration is managed through `home/` and Chezmoi
+- See `home/.chezmoiscripts/` for automated setup steps (fonts, tools, etc.)
