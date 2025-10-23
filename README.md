@@ -2,7 +2,7 @@
 
 Personal dotfiles managed with [Chezmoi](https://github.com/twpayne/chezmoi). The active, up-to-date configuration lives under `home/` and is applied to `$HOME` via Chezmoi.
 
-![Sample Command Line](assets/sample_command_line_2.png)
+![Sample Command Line](assets/sample_command_line.png)
 
 ## Status
 
@@ -56,7 +56,7 @@ brew install chezmoi
 chezmoi init --apply ajholzbach
 ```
 
-This will clone the repo as a Chezmoi source and immediately apply the files from `home/` into your `$HOME`. Chezmoi scripts will automatically install Homebrew (macOS), fonts, Starship, and Antidote.
+This will clone the repo as a Chezmoi source and immediately apply the files from `home/` into your `$HOME`. Chezmoi scripts will automatically install Homebrew (only on macOS), required fonts, Starship, and Antidote.
 
 ## Recommended Packages
 
@@ -74,13 +74,11 @@ To get the full experience from these dotfiles, consider installing these option
 brew install fish
 
 # Linux
-# Ubuntu/Debian: apt install fish
-# Fedora: dnf install fish
-# Or via mise: mise install fish
+# Follow instructions at https://fishshell.com/
 ```
 
 #### [Mise](https://mise.jdx.dev/) (Development Environment Manager)
-**Why**: Manages development tool versions (Node.js, Python, Go, etc.) and installs.
+**Why**: Manages development tool versions (Node.js, Go, Java, etc.) and installs.
 ```bash
 # macOS
 brew install mise
@@ -97,8 +95,8 @@ curl https://mise.run | sh
 # macOS
 brew install bat
 
-# Linux (via mise - easier than most package managers)
-mise install bat
+# Linux
+mise use -g bat
 ```
 
 #### [Zoxide](https://github.com/ajeetdsouza/zoxide) (Smart cd)
@@ -107,8 +105,8 @@ mise install bat
 # macOS
 brew install zoxide
 
-# Linux (via mise recommended)
-mise install zoxide
+# Linux
+mise use -g zoxide
 ```
 
 ### Post-Install Setup
