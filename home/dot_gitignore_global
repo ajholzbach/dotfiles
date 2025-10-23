@@ -1,70 +1,83 @@
-# ===============================================================================================================================
-#  ██████╗ ██╗████████╗██╗ ██████╗ ███╗   ██╗ ██████╗ ██████╗ ███████╗         ██████╗ ██╗      ██████╗ ██████╗  █████╗ ██╗
-# ██╔════╝ ██║╚══██╔══╝██║██╔════╝ ████╗  ██║██╔═══██╗██╔══██╗██╔════╝        ██╔════╝ ██║     ██╔═══██╗██╔══██╗██╔══██╗██║
-# ██║  ███╗██║   ██║   ██║██║  ███╗██╔██╗ ██║██║   ██║██████╔╝█████╗          ██║  ███╗██║     ██║   ██║██████╔╝███████║██║
-# ██║   ██║██║   ██║   ██║██║   ██║██║╚██╗██║██║   ██║██╔══██╗██╔══╝          ██║   ██║██║     ██║   ██║██╔══██╗██╔══██║██║
-# ╚██████╔╝██║   ██║   ██║╚██████╔╝██║ ╚████║╚██████╔╝██║  ██║███████╗███████╗╚██████╔╝███████╗╚██████╔╝██████╔╝██║  ██║███████╗
-#  ╚═════╝ ╚═╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝ ╚═════╝ ╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝
-# ===============================================================================================================================
-
-# Operating System Files
-## macOS
+# macOS
 .DS_Store
 .AppleDouble
 .LSOverride
+._*
+Icon
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
 
-## Windows
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
 ehthumbs.db
+ehthumbs_vista.db
 Desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.lnk
 
-## Linux
+# Linux
 *~
 .directory
+.fuse_hidden*
+.Trash-*
+.nfs*
+nohup.out
 
-# Editor and IDE Temporary Files
-## Visual Studio Code
+# Visual Studio Code
 .vscode/
+*.code-workspace
 
-## Sublime Text
+# Sublime Text
 *.sublime-workspace
 *.sublime-project
 
-## JetBrains IDEs (IntelliJ, PyCharm, etc.)
+# JetBrains
 .idea/
+*.iml
 
-## Vim
+# Vim
 *.swp
 *.swo
 *.swn
+*.swap
 
-## Emacs
+# Emacs
 *~
-#*#
+\#*\#
 .emacs.desktop
 .emacs.desktop.lock
+auto-save-list
+tramp
+.\#*
 
-## Nano
+# Nano
 *.save
 
-# Language Specific
-## Node.js
-node_modules/
+# Eclipse
+.project
+.classpath
+.settings/
 
-## Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-venv/
-.venv/
+# Xcode
+xcuserdata/
+*.xcworkspace
 
-## Ruby
-.bundle/
-.ruby-version
-.rbenv-vars
-
-## Java
-target/
-*.class
+# Temporary/Backup
+*.bak
+*.tmp
+*.temp
+*.orig
+*.log
+*.cache
