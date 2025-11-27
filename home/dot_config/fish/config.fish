@@ -23,8 +23,7 @@ if status is-interactive
     end
     # starship.rs prompt
     if type -q starship
-        # starship init fish | source
-        echo "source (starship init fish --print-full-init | psub)" | source
+        starship init fish --print-full-init | source
         enable_transience
     end
     # mise shell integration
