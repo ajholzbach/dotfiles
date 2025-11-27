@@ -64,7 +64,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     fi
 
     # Add alias for opening idea detached
-    alias idead="open -a open -a IntelliJ\ IDEA"
+    alias idead="open -na 'IntelliJ IDEA'"
 fi
 
 # # Set XDG_CONFIG_HOME if not already set
@@ -89,13 +89,17 @@ fi
 # Add zoxide if it exists
 if command -v zoxide &> /dev/null; then
     eval "$(zoxide init zsh)"
-    alias cd='z'
-    alias cdo='builtin cd'
+    if [[ $- == *i* ]]; then
+        alias cd='z'
+        alias cdo='builtin cd'
+    fi
 fi
 
 # Add bat alias if it exists
 if command -v bat &> /dev/null; then
-    alias cat='bat --plain'
+    if [[ $- == *i* ]]; then
+        alias cat='bat --plain'
+    fi
 fi
 
 # Add fzf if it exists and set catppuccin theme

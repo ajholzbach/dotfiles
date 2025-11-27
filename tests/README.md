@@ -1,6 +1,6 @@
 # Dotfiles Testing
 
-Tests the dotfiles installation on Ubuntu Linux using Docker.
+Lightweight Docker-based tests for the chezmoi source. The harness builds a minimal Ubuntu image, applies the dotfiles, re-applies to ensure idempotency, and asserts a few key installs.
 
 ## Prerequisites
 
@@ -16,26 +16,17 @@ From the repository root:
 
 ## What It Does
 
-1. Builds an Ubuntu 22.04 Docker image with:
-   - curl, git, and sudo installed
-   - chezmoi pre-installed in user's PATH
-   - Non-root user (testuser) for realistic testing
-
-2. Runs the installation test:
-   - Mounts your dotfiles repository into the container at `/dotfiles` (read-only)
-   - Copies the repository to `~/.local/share/chezmoi` (chezmoi's source directory)
-   - Runs `chezmoi apply` to install all dotfiles and execute scripts
-   - Filters output to show only important installation messages
-
-3. Verifies key components installed successfully:
-   - **Starship**: Cross-shell prompt (with version info)
-   - **Antidote**: Zsh plugin manager
-   - **MesloLGS NF fonts**: All 4 font variants (Regular, Bold, Italic, Bold Italic)
-
-4. Reports results:
-   - Shows which components passed/failed with ✓/✗
-   - Displays summary (e.g., "3 passed, 0 failed")
-   - Exits with code 0 if all passed, code 1 if any failed
+1) Builds an Ubuntu 22.04 image with curl, git, sudo, and chezmoi preinstalled under a non-root user (`testuser`).
+2) Runs `tests/container-test.sh` inside the container, which:
+   - Copies the repo to `~/.local/share/chezmoi`
+   - Runs `chezmoi apply`, then re-runs to check idempotency and a clean `chezmoi diff`
+   - Asserts key artifacts:
+     - Starship installed
+     - Antidote installed
+     - `.zshrc` present
+     - `~/.config/starship.toml` present
+     - MesloLGS NF fonts (>=4 variants) in Linux/macOS font paths
+3) Summarizes pass/fail counts and exits non-zero on any failure.
 
 ## Expected Output
 
@@ -50,11 +41,13 @@ Installing starship with official installer...
 Installing antidote zsh plugin manager...
 
 ==> Verification Results:
-  ✓ Starship installed (starship 1.23.0)
+  ✓ Starship installed (starship X.Y.Z)
   ✓ Antidote installed
+  ✓ .zshrc installed
+  ✓ Starship config installed
   ✓ MesloLGS NF fonts installed (4 variants)
 
-==> Summary: 3 passed, 0 failed
+==> Summary: 7 passed, 0 failed
 ==> All tests passed!
 ```
 
@@ -73,6 +66,8 @@ Inside the container, run the same steps as the automated test:
 mkdir -p ~/.local/share
 cp -r /dotfiles ~/.local/share/chezmoi
 chezmoi apply -v
+chezmoi apply -v  # idempotency check
+chezmoi diff      # should be empty
 ```
 
 Verify installations:
@@ -81,6 +76,7 @@ Verify installations:
 starship --version
 ls ~/.antidote/
 ls ~/.local/share/fonts/
+ls ~/.config/starship.toml
 ```
 
 ## Clean Up

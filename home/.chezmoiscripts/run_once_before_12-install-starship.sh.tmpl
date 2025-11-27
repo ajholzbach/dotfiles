@@ -31,5 +31,5 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 echo "Installing starship with official installer..."
-curl -sS https://starship.rs/install.sh | sh -s -- --yes
+curl -fsSL https://starship.rs/install.sh | sh -s -- --yes
 {{- end }}
