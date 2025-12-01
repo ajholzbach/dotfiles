@@ -1,6 +1,6 @@
 theme = Catppuccin Mocha
 window-colorspace = display-p3
-font-family = MesloLGS NF
+font-family = MesloLGS Nerd Font
 auto-update-channel = stable
 window-width = 128
 window-height = 36

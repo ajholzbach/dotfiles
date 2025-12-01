@@ -47,14 +47,14 @@ assert_fonts() {
     for dir in "$HOME/.local/share/fonts" "$HOME/Library/Fonts"; do
         [ -d "$dir" ] || continue
         local found
-        found=$(find "$dir" -name "MesloLGS NF*.ttf" 2>/dev/null | wc -l | tr -d ' ')
+        found=$(find "$dir" -name "MesloLGS*Nerd*Font*.ttf" 2>/dev/null | wc -l | tr -d ' ')
         if [ "$found" -gt 0 ]; then
             count=$((count + found))
         fi
     done
 
     if [ "$count" -ge "$min_expected" ]; then
-        ok "MesloLGS NF fonts installed ($count variants)"
+        ok "MesloLGS Nerd Font installed ($count variants)"
     else
         fail "Fonts missing (found $count, expected at least $min_expected)"
     fi

@@ -8,20 +8,9 @@ if ! command -v curl >/dev/null 2>&1; then
     exit 1
 fi
 
-echo "Installing MesloLGS NF fonts..."
+echo "Installing MesloLGS Nerd Font..."
 
-FONT_URLS=(
-    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf"
-    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold.ttf"
-    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Italic.ttf"
-    "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Bold%20Italic.ttf"
-)
-FONT_NAMES=(
-    "MesloLGS NF Regular.ttf"
-    "MesloLGS NF Bold.ttf"
-    "MesloLGS NF Italic.ttf"
-    "MesloLGS NF Bold Italic.ttf"
-)
+FONT_ARCHIVE_URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/Meslo.tar.xz"
 
 {{- if eq .chezmoi.os "darwin" }}
 FONT_DIR="$HOME/Library/Fonts"
@@ -29,35 +18,85 @@ FONT_DIR="$HOME/Library/Fonts"
 FONT_DIR="$HOME/.local/share/fonts"
 {{- end }}
 
-all_fonts_installed=true
-for font_name in "${FONT_NAMES[@]}"; do
-    if [ ! -f "$FONT_DIR/$font_name" ]; then
-        all_fonts_installed=false
-        break
+if command -v brew >/dev/null 2>&1; then
+    if brew list --cask font-meslo-lg-nerd-font >/dev/null 2>&1; then
+        echo "MesloLGS Nerd Font already installed via Homebrew"
+        exit 0
     fi
-done
 
-if [ "$all_fonts_installed" = true ]; then
-    echo "All MesloLGS NF fonts are already installed in $FONT_DIR"
+    echo "Installing MesloLGS Nerd Font via Homebrew..."
+    brew tap homebrew/cask-fonts >/dev/null 2>&1 || true
+    if brew install --cask font-meslo-lg-nerd-font; then
+        echo "MesloLGS Nerd Font installed via Homebrew."
+        exit 0
+    else
+        echo "Homebrew install failed, falling back to manual download..."
+    fi
+fi
+
+existing_count=0
+if [ -d "$FONT_DIR" ]; then
+    existing_count=$(find "$FONT_DIR" -type f -name "MesloLGS*Nerd*Font*.ttf" 2>/dev/null | wc -l | tr -d ' ')
+fi
+
+if [ "$existing_count" -ge 4 ]; then
+    echo "MesloLGS Nerd Font already installed in $FONT_DIR"
     exit 0
 fi
 
 mkdir -p "$FONT_DIR"
 
-for i in "${!FONT_URLS[@]}"; do
-    font_file="$FONT_DIR/${FONT_NAMES[$i]}"
-    if [ -f "$font_file" ]; then
-        echo "Font ${FONT_NAMES[$i]} already exists, skipping..."
-    else
-        echo "Downloading ${FONT_NAMES[$i]}..."
-        if curl -fsSL -o "$font_file" "${FONT_URLS[$i]}"; then
-            echo "Successfully installed ${FONT_NAMES[$i]}"
+TMP_DIR="$(mktemp -d)"
+cleanup() {
+    rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT
+
+ARCHIVE_PATH="$TMP_DIR/Meslo.tar.xz"
+
+echo "Downloading MesloLGS Nerd Font archive..."
+if ! curl -fsSL -o "$ARCHIVE_PATH" "$FONT_ARCHIVE_URL"; then
+    echo "Failed to download MesloLGS Nerd Font archive"
+    exit 1
+fi
+
+if command -v tar >/dev/null 2>&1; then
+    if ! tar -xf "$ARCHIVE_PATH" -C "$TMP_DIR"; then
+        if command -v xz >/dev/null 2>&1; then
+            if xz -dk "$ARCHIVE_PATH"; then
+                if ! tar -xf "${ARCHIVE_PATH%.xz}" -C "$TMP_DIR"; then
+                    echo "Failed to extract MesloLGS Nerd Font archive after xz decompression"
+                    exit 1
+                fi
+            else
+                echo "Failed to decompress MesloLGS Nerd Font archive with xz"
+                exit 1
+            fi
         else
-            echo "Failed to download ${FONT_NAMES[$i]}"
+            echo "Error: tar extraction failed and xz is not available. Please install xz."
             exit 1
         fi
     fi
-done
+elif command -v bsdtar >/dev/null 2>&1; then
+    if ! bsdtar -xf "$ARCHIVE_PATH" -C "$TMP_DIR"; then
+        echo "Failed to extract MesloLGS Nerd Font archive with bsdtar"
+        exit 1
+    fi
+else
+    echo "Error: tar or bsdtar is required to extract font archive"
+    exit 1
+fi
+
+font_count=0
+while IFS= read -r -d '' font_file; do
+    cp -f "$font_file" "$FONT_DIR/"
+    font_count=$((font_count + 1))
+done < <(find "$TMP_DIR" -type f -name "*.ttf" -print0)
+
+if [ "$font_count" -eq 0 ]; then
+    echo "No fonts were extracted from the MesloLGS Nerd Font archive"
+    exit 1
+fi
 
 {{- if eq .chezmoi.os "linux" }}
 if command -v fc-cache >/dev/null 2>&1; then
@@ -66,5 +105,5 @@ if command -v fc-cache >/dev/null 2>&1; then
 fi
 {{- end }}
 
-echo "MesloLGS NF fonts installed successfully in $FONT_DIR"
+echo "Installed $font_count MesloLGS Nerd Font files to $FONT_DIR"
 {{- end }}

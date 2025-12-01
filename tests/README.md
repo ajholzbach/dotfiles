@@ -25,7 +25,7 @@ From the repository root:
      - Antidote installed
      - `.zshrc` present
      - `~/.config/starship.toml` present
-     - MesloLGS NF fonts (>=4 variants) in Linux/macOS font paths
+     - MesloLGS Nerd Font (>=4 variants) in Linux/macOS font paths
 3) Summarizes pass/fail counts and exits non-zero on any failure.
 
 ## Expected Output
@@ -36,7 +36,7 @@ Running chezmoi installation test...
 
 ==> Setting up chezmoi source directory...
 ==> Running chezmoi apply...
-Installing MesloLGS NF fonts...
+Installing MesloLGS Nerd Font...
 Installing starship with official installer...
 Installing antidote zsh plugin manager...
 
@@ -45,7 +45,7 @@ Installing antidote zsh plugin manager...
   ✓ Antidote installed
   ✓ .zshrc installed
   ✓ Starship config installed
-  ✓ MesloLGS NF fonts installed (4 variants)
+  ✓ MesloLGS Nerd Font installed (4 variants)
 
 ==> Summary: 7 passed, 0 failed
 ==> All tests passed!

@@ -2,7 +2,7 @@
   "agent": {
     "dock": "left"
   },
-  "buffer_font_family": "MesloLGS NF",
+  "buffer_font_family": "MesloLGS Nerd Font",
   "buffer_font_size": 14,
   "icon_theme": "Catppuccin Mocha",
   "project_panel": {
@@ -17,7 +17,7 @@
     "light": "Catppuccin Latte",
     "mode": "dark"
   },
-  "ui_font_family": "MesloLGS NF",
+  "ui_font_family": "MesloLGS Nerd Font",
   "ui_font_size": 14,
   "vim_mode": false
 }

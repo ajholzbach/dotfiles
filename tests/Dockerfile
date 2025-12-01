@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     git \
     sudo \
+    fontconfig \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -s /bin/bash testuser && \
