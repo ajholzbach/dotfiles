@@ -10,6 +10,7 @@ contains $HOME/.local/bin $fish_user_paths; or fish_add_path -U $HOME/.local/bin
 # Add Homebrew to PATH if installed
 if test -x /opt/homebrew/bin/brew
     contains /opt/homebrew/bin $fish_user_paths; or fish_add_path -U /opt/homebrew/bin
+    contains /opt/homebrew/sbin $fish_user_paths; or fish_add_path -U /opt/homebrew/sbin
     # Set concurrent downloads for Homebrew if not already set
     if not set -q HOMEBREW_DOWNLOAD_CONCURRENCY
         set -xg HOMEBREW_DOWNLOAD_CONCURRENCY auto
