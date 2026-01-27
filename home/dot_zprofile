@@ -1,4 +1,7 @@
-if command -v brew >/dev/null 2>&1; then
-    eval "$(brew shellenv)"
+if [ -x "/opt/homebrew/bin/brew" ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+    export HOMEBREW_DOWNLOAD_CONCURRENCY=auto
+elif [ -x "/usr/local/bin/brew" ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
     export HOMEBREW_DOWNLOAD_CONCURRENCY=auto
 fi
