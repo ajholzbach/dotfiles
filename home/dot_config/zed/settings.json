@@ -15,6 +15,28 @@
         "!pyright",
         "!pylsp",
       ],
+      "format_on_save": "on",
+      "formatter": "language_server",
+      "code_actions_on_format": {
+        "source.organizeImports": true,
+        "source.fixAll.ruff": true,
+      },
+    },
+    "Go": {
+      "hard_tabs": true,
+      "tab_size": 4,
+      "format_on_save": "on",
+      "formatter": "language_server",
+      "code_actions_on_format": {
+        "source.organizeImports": true,
+      },
+    },
+  },
+  "lsp": {
+    "gopls": {
+      "binary": {
+        "path": "gopls",
+      },
     },
   },
   "project_panel": {
