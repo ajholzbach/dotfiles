@@ -11,7 +11,7 @@ This repository is fully managed by Chezmoi. All active dotfiles are in `home/` 
 ## Layout
 
 - `home/`: Source of truth for dotfiles used by Chezmoi (mirrors `$HOME` layout)
-- `home/.chezmoiscripts/`: Automated installation scripts for fonts, Starship, Antidote, etc.
+- `home/.chezmoiscripts/`: Automated installation scripts for fonts, Starship, Antidote, Fish plugins, etc.
 - `tests/`: Docker-based test suite for Ubuntu installation validation
 - `macOS/`: macOS-specific utilities (icons, optional install scripts)
 - `assets/`: Screenshots and images for documentation

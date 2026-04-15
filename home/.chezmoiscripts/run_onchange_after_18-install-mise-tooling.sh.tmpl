@@ -1,0 +1,7 @@
+{{- if and (or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux")) (lookPath "mise") (not (lookPath "usage")) -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Installing usage for mise completions..."
+mise use -g usage -y
+{{- end }}

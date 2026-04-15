@@ -1,0 +1,36 @@
+{{- if and (or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux")) (lookPath "fish") -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+# fish_plugins_sha256={{ include "dot_config/fish/fish_plugins" | sha256sum }}
+# fish_theme_sha256={{ include "dot_config/fish/themes/Catppuccin Mocha.theme" | sha256sum }}
+
+if ! command -v curl >/dev/null 2>&1; then
+    echo "Error: curl is required to install Fisher"
+    exit 1
+fi
+
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CONFIG_HOME
+
+FISH_FUNCTIONS_DIR="$XDG_CONFIG_HOME/fish/functions"
+FISHER_FUNCTION="$FISH_FUNCTIONS_DIR/fisher.fish"
+SOURCE_FISH_PLUGINS="{{ .chezmoi.sourceDir }}/dot_config/fish/fish_plugins"
+
+if ! fish -c 'functions -q fisher' >/dev/null 2>&1; then
+    mkdir -p "$FISH_FUNCTIONS_DIR"
+    echo "Installing Fisher plugin manager..."
+    curl -fsSL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish -o "$FISHER_FUNCTION"
+fi
+
+echo "Syncing Fish plugins..."
+fish -c 'fisher update'
+cp -f "$SOURCE_FISH_PLUGINS" "$XDG_CONFIG_HOME/fish/fish_plugins"
+
+if [ -f "$XDG_CONFIG_HOME/fish/themes/Catppuccin Mocha.theme" ]; then
+    if fish -c 'fish_config theme list >/dev/null 2>&1'; then
+        echo "Applying Fish theme..."
+        fish -c 'echo y | fish_config theme save "Catppuccin Mocha" >/dev/null'
+    fi
+fi
+{{- end }}

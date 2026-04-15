@@ -1,0 +1,14 @@
+if [ -d "$HOME/.local/bin" ]; then
+    case ":$PATH:" in
+        *":$HOME/.local/bin:"*) ;;
+        *) export PATH="$HOME/.local/bin:$PATH" ;;
+    esac
+fi
+
+if [ -z "${XDG_CONFIG_HOME:-}" ]; then
+    export XDG_CONFIG_HOME="$HOME/.config"
+fi
+
+export CONDA_AUTO_ACTIVATE_BASE=false
+export EDITOR=vim
+export VISUAL=vim

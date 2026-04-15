@@ -7,12 +7,9 @@
 #                 ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-if [ -d "$HOME/.local/bin" ]; then
-    export PATH="$HOME/.local/bin:$PATH"
+if [ -f "$HOME/.profile" ]; then
+    source "$HOME/.profile"
 fi
-
-# Don't activate conda base env by default to speed up shell startup
-export CONDA_AUTO_ACTIVATE_BASE=false
 
 # OSX
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -67,19 +64,10 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     alias idead="open -na 'IntelliJ IDEA'"
 fi
 
-# # Set XDG_CONFIG_HOME if not already set
-if [ -z "$XDG_CONFIG_HOME" ]; then
-    export XDG_CONFIG_HOME="$HOME/.config"
-fi
-
 # Source .bash_profile if it exists
 if [ -f ~/.bash_profile ]; then
     source ~/.bash_profile
 fi
-
-# Set default system editor to vim
-export EDITOR=vim
-export VISUAL=vim
 
 # Activate mise
 if command -v mise &> /dev/null; then

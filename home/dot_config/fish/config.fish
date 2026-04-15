@@ -18,10 +18,6 @@ if test -x /opt/homebrew/bin/brew
 end
 
 if status is-interactive
-    # Fisher setup
-    if not functions -q fisher
-        fisher_setup
-    end
     # starship.rs prompt
     if type -q starship
         starship init fish --print-full-init | source

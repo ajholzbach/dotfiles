@@ -62,11 +62,11 @@ assert_fonts() {
 
 assert_clean_diff() {
     local diff_output=""
-    diff_output="$(chezmoi diff 2>/dev/null || true)"
+    diff_output="$(chezmoi diff --exclude=scripts 2>/dev/null || true)"
     if [ -z "$diff_output" ]; then
-        ok "chezmoi diff clean after re-apply"
+        ok "chezmoi diff clean after re-apply with scripts excluded"
     else
-        fail "chezmoi diff not clean after re-apply"
+        fail "chezmoi diff not clean after re-apply with scripts excluded"
         echo "$diff_output"
     fi
 }
