@@ -114,6 +114,10 @@ symbol = " "
 [ocaml]
 symbol = " "
 
+[os]
+disabled = false
+style = "none"
+
 [os.symbols]
 Alpaquita = " "
 Alpine = " "
