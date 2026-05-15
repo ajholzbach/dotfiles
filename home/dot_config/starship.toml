@@ -1,6 +1,6 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
-format = '$os $all'
+format = '$os $directory$shell$all'
 command_timeout = 750
 
 [aws]
@@ -198,6 +198,9 @@ symbol = "󱘗 "
 
 [scala]
 symbol = " "
+
+[shell]
+disabled = false
 
 [status]
 symbol = " "
