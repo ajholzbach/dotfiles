@@ -59,3 +59,11 @@ if $XONSH_INTERACTIVE:
     if os.path.isdir(_orb_bin) and _orb_bin not in $PATH:
         $PATH.append(_orb_bin)
     del _orb_bin
+
+    # Zoxide as `cd` (fish equivalent: `zoxide init --cmd cd fish | source`)
+    if !(which zoxide).returncode == 0:
+        execx($(zoxide init xonsh --cmd cd))
+
+    # bat as `cat` (fish equivalent: cat.fish lazy shim)
+    if !(which bat).returncode == 0:
+        aliases['cat'] = ['bat', '--paging=never', '--style=plain', '--color=auto']

@@ -1,0 +1,26 @@
+"""Git aliases, xonsh port of https://github.com/ajholzbach/fish-git.
+
+Loaded automatically from ~/.config/xonsh/rc.d/ after rc.xsh.
+List form is preferred over strings so xonsh doesn't re-parse them.
+"""
+
+aliases['g']    = ['git']
+aliases['ga']   = ['git', 'add']
+aliases['gaa']  = ['git', 'add', '--all']
+aliases['gb']   = ['git', 'branch']
+aliases['gbd']  = ['git', 'branch', '--delete']
+aliases['gbs']  = ['git', 'bisect']
+aliases['gc']   = ['git', 'commit', '--verbose']
+aliases['gcp']  = ['git', 'cherry-pick']
+aliases['gd']   = ['git', 'diff']
+aliases['gf']   = ['git', 'fetch']
+aliases['gl']   = ['git', 'pull']
+aliases['glog'] = ['git', 'log', '--oneline', '--decorate', '--graph']
+aliases['gm']   = ['git', 'merge']
+aliases['gp']   = ['git', 'push']
+aliases['gpr']  = ['git', 'pull', '--rebase']
+aliases['grhh'] = ['git', 'reset', '--hard', 'HEAD']
+aliases['grs']  = ['git', 'restore']
+aliases['gst']  = ['git', 'status']
+aliases['gsw']  = ['git', 'switch']
+aliases['gswc'] = ['git', 'switch', '--create']
