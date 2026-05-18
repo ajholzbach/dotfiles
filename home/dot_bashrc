@@ -2,6 +2,11 @@ if [ -f "$HOME/.profile" ]; then
     source "$HOME/.profile"
 fi
 
+# Per-machine env (untracked)
+if [ -f "$HOME/.config/local-env.sh" ]; then
+    source "$HOME/.config/local-env.sh"
+fi
+
 if command -v starship >/dev/null 2>&1; then
     eval "$(starship init bash)"
 fi

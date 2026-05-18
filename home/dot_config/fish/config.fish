@@ -3,6 +3,11 @@ if not set -q XDG_CONFIG_HOME
     set -xg XDG_CONFIG_HOME $HOME/.config
 end
 
+# Per-machine env (untracked)
+if test -f $HOME/.config/local-env.fish
+    source $HOME/.config/local-env.fish
+end
+
 # Add to PATH
 contains /usr/local/bin $fish_user_paths; or fish_add_path -U /usr/local/bin
 contains $HOME/.local/bin $fish_user_paths; or fish_add_path -U $HOME/.local/bin
@@ -18,6 +23,9 @@ if test -x /opt/homebrew/bin/brew
 end
 
 if status is-interactive
+    # Silence fish's built-in welcome banner
+    set fish_greeting ""
+
     # starship.rs prompt
     if type -q starship
         starship init fish --print-full-init | source

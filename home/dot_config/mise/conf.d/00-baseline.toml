@@ -1,0 +1,11 @@
+# Shared mise settings, tracked in chezmoi. Per-machine [tools] in ~/.config/mise/config.toml
+
+# Universal tool deps (needed by the dotfiles bootstrap; usage powers mise's
+# completion generation for the shell-completions script)
+[tools]
+usage = "latest"
+
+[settings.go]
+default_packages_file = "~/.config/mise/default-go-packages"
+# Keep `go install` output stable in ~/go/bin across version switches
+set_gobin = false

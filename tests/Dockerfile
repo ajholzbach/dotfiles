@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     fontconfig \
     fish \
     git \
+    python3-pip \
     ripgrep \
     sudo \
     zsh \
@@ -27,6 +28,10 @@ WORKDIR /home/testuser
 
 RUN curl -sfL https://get.chezmoi.io | sh
 RUN curl -fsSL https://mise.run | sh
+
+# xonsh smoke-test dependency. Minimal install (ptk extras + catppuccin theme) so
+# rc.xsh's $XONSH_COLOR_STYLE = 'catppuccin-mocha' resolves without warnings
+RUN python3 -m pip install --user 'xonsh[ptk]' 'catppuccin[pygments]'
 
 ENV PATH="/home/testuser/.local/bin:/home/testuser/bin:${PATH}"
 

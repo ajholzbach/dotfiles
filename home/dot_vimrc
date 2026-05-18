@@ -61,7 +61,7 @@ set backspace=indent,eol,start
 set wrap
 set linebreak
 set breakindent
-set showbreak=>\
+let &showbreak = '> '
 
 " Formatting
 set formatoptions-=o

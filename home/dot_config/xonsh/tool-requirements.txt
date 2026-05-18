@@ -1,0 +1,14 @@
+# Source of truth for `--with-requirements`. Rebuild after editing:
+#   uv tool install --reinstall --managed-python 'xonsh[full]' \
+#     --with-requirements ~/.config/xonsh/tool-requirements.txt
+
+catppuccin[pygments]
+pyyaml
+requests
+rich
+python-dateutil
+
+# OpenBLAS wheels from PyPI (not Accelerate). For heavy numerical work, use a
+# conda env with Accelerate-pinned BLAS
+numpy
+pandas

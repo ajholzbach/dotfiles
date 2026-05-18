@@ -1,8 +1,4 @@
-"""Git aliases, xonsh port of https://github.com/ajholzbach/fish-git.
-
-Loaded automatically from ~/.config/xonsh/rc.d/ after rc.xsh.
-List form is preferred over strings so xonsh doesn't re-parse them.
-"""
+"""Git aliases, xonsh port of https://github.com/ajholzbach/fish-git."""
 
 aliases['g']    = ['git']
 aliases['ga']   = ['git', 'add']

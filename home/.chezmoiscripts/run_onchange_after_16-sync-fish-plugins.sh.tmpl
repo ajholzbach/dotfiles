@@ -15,7 +15,6 @@ export XDG_CONFIG_HOME
 
 FISH_FUNCTIONS_DIR="$XDG_CONFIG_HOME/fish/functions"
 FISHER_FUNCTION="$FISH_FUNCTIONS_DIR/fisher.fish"
-SOURCE_FISH_PLUGINS="{{ .chezmoi.sourceDir }}/dot_config/fish/fish_plugins"
 
 if ! fish -c 'functions -q fisher' >/dev/null 2>&1; then
     mkdir -p "$FISH_FUNCTIONS_DIR"
@@ -23,9 +22,9 @@ if ! fish -c 'functions -q fisher' >/dev/null 2>&1; then
     curl -fsSL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish -o "$FISHER_FUNCTION"
 fi
 
+# fish_plugins has already been applied by chezmoi at this point; fisher reads it directly
 echo "Syncing Fish plugins..."
 fish -c 'fisher update'
-cp -f "$SOURCE_FISH_PLUGINS" "$XDG_CONFIG_HOME/fish/fish_plugins"
 
 if [ -f "$XDG_CONFIG_HOME/fish/themes/Catppuccin Mocha.theme" ]; then
     if fish -c 'fish_config theme list >/dev/null 2>&1'; then

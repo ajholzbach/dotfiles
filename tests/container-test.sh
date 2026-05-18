@@ -72,6 +72,14 @@ assert_file "$HOME/.zshrc" \
     ".zshrc installed" \
     ".zshrc missing"
 
+assert_file "$HOME/.bashrc" \
+    ".bashrc installed" \
+    ".bashrc missing"
+
+assert_file "$HOME/.config/xonsh/rc.xsh" \
+    "xonsh rc.xsh installed" \
+    "xonsh rc.xsh missing"
+
 assert_file "$HOME/.config/starship.toml" \
     "Starship config installed" \
     "Starship config missing"
@@ -116,6 +124,12 @@ else
     fail "zsh startup failed"
 fi
 
+if bash -ic 'exit' >/dev/null 2>&1; then
+    ok "bash startup succeeded"
+else
+    fail "bash startup failed"
+fi
+
 if fish -ic 'exit' >/dev/null 2>&1; then
     ok "fish startup succeeded"
 else
@@ -126,6 +140,16 @@ if fish -ic 'functions -q fisher' >/dev/null 2>&1; then
     ok "Fisher available in fish"
 else
     fail "Fisher missing in fish"
+fi
+
+if command -v xonsh >/dev/null 2>&1; then
+    if xonsh -c 'pass' >/dev/null 2>&1; then
+        ok "xonsh startup succeeded (rc.xsh parses)"
+    else
+        fail "xonsh startup failed"
+    fi
+else
+    fail "xonsh not installed"
 fi
 
 print_summary_and_exit

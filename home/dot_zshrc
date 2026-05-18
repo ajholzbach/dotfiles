@@ -11,28 +11,41 @@ if [ -f "$HOME/.profile" ]; then
     source "$HOME/.profile"
 fi
 
+# History and completion (inlined from OMZ path:lib)
+HISTSIZE=50000
+SAVEHIST=50000
+setopt extended_history hist_expire_dups_first hist_ignore_dups \
+       hist_ignore_space hist_verify share_history
+setopt auto_menu complete_in_word always_to_end
+zstyle ':completion:*' menu select
+zstyle ':completion:*' special-dirs true
+zstyle ':completion:*' use-cache yes
+zstyle ':completion:*' cache-path $HOME/.cache/zsh
+
 # OSX
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # Lazy-load conda if installed
-    if [ -d "/opt/homebrew/Caskroom/miniconda/base" ]; then
-        conda() {
-        unset -f conda
-        # >>> conda initialize >>>
-        __conda_setup="$('/opt/homebrew/Caskroom/miniconda/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-        if [ $? -eq 0 ]; then
-            eval "$__conda_setup"
-        else
-            if [ -f "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
-                . "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh"
-            else
-                export PATH="/opt/homebrew/Caskroom/miniconda/base/bin:$PATH"
-            fi
+    # Lazy-load conda (miniforge or miniconda) if installed
+    for _conda_root in /opt/homebrew/Caskroom/miniforge/base /opt/homebrew/Caskroom/miniconda/base; do
+        if [ -d "$_conda_root" ]; then
+            eval "conda() {
+                unset -f conda
+                __conda_setup=\"\$('$_conda_root/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)\"
+                if [ \$? -eq 0 ]; then
+                    eval \"\$__conda_setup\"
+                else
+                    if [ -f '$_conda_root/etc/profile.d/conda.sh' ]; then
+                        . '$_conda_root/etc/profile.d/conda.sh'
+                    else
+                        export PATH='$_conda_root/bin:'\$PATH
+                    fi
+                fi
+                unset __conda_setup
+                conda \"\$@\"
+            }"
+            break
         fi
-        unset __conda_setup
-        # <<< conda initialize <<<
-        conda "$@"
-        }
-    fi
+    done
+    unset _conda_root
 
     # Lazy-load nvm if installed
     if [ -d "$HOME/.nvm" ] || [ -s "/opt/homebrew/opt/nvm/nvm.sh" ]; then
@@ -59,14 +72,11 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         command pnpm "$@"
         }
     fi
-
-    # Add alias for opening idea detached
-    alias idead="open -na 'IntelliJ IDEA'"
 fi
 
-# Source .bash_profile if it exists
-if [ -f ~/.bash_profile ]; then
-    source ~/.bash_profile
+# Per-machine env (untracked)
+if [ -f "$HOME/.config/local-env.sh" ]; then
+    source "$HOME/.config/local-env.sh"
 fi
 
 # Activate mise
@@ -90,16 +100,6 @@ if command -v bat &> /dev/null; then
     fi
 fi
 
-# Add fzf if it exists and set catppuccin theme
-if command -v fzf &> /dev/null; then
-    source <(fzf --zsh)
-    export FZF_DEFAULT_OPTS=" \
-    --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
-    --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
-    --color=marker:#b4befe,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8 \
-    --color=selected-bg:#45475a \
-    --multi"
-fi
 
 # antidote
 if [ -f "$HOME/.antidote/antidote.zsh" ]; then
@@ -113,6 +113,17 @@ if [ -f "$HOME/.antidote/antidote.zsh" ]; then
       )
     fi
     source ${zsh_plugins}.zsh
+fi
+
+# Add fzf if it exists and set catppuccin theme
+if command -v fzf &> /dev/null; then
+    source <(fzf --zsh)
+    export FZF_DEFAULT_OPTS=" \
+    --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+    --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+    --color=marker:#b4befe,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8 \
+    --color=selected-bg:#45475a \
+    --multi"
 fi
 
 # Starship.rs

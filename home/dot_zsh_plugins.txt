@@ -1,6 +1,5 @@
-# Oh My Zsh plugins
+# OMZ git aliases (path:lib useful bits are inlined in .zshrc)
 getantidote/use-omz
-ohmyzsh/ohmyzsh path:lib
 ohmyzsh/ohmyzsh path:plugins/git kind:defer
 
 # Zsh plugins

@@ -25,7 +25,6 @@ if command -v brew >/dev/null 2>&1; then
     fi
 
     echo "Installing MesloLGS Nerd Font via Homebrew..."
-    brew tap homebrew/cask-fonts >/dev/null 2>&1 || true
     if brew install --cask font-meslo-lg-nerd-font; then
         echo "MesloLGS Nerd Font installed via Homebrew."
         exit 0
