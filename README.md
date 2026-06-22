@@ -37,7 +37,7 @@ Any machine-specific exports (work tokens, internal credentials, per-host overri
 - [**starship**](https://starship.rs/): Cross-shell prompt with custom symbols, OS detection, and a shared `starship.toml` in `dot_config/`.
 - [**bat**](https://github.com/sharkdp/bat): Syntax highlighting configuration with Catppuccin Mocha theme.
 - [**zoxide**](https://github.com/ajeetdsouza/zoxide): Smart directory jumping (aliased to `cd` in every shell via per-shell init).
-- [**mise**](https://mise.jdx.dev/): Development environment manager integration (auto-activated in zsh / fish / xonsh). Shared settings (`set_gobin = false` so `go install` writes to `~/go/bin`, stable across version switches) live in `dot_config/mise/conf.d/00-baseline.toml`. Per-machine `[tools]` lives in `~/.config/mise/config.toml`, which is intentionally untracked so `mise use -g` writes there freely without creating chezmoi drift.
+- [**mise**](https://mise.jdx.dev/): Development environment manager integration (auto-activated in zsh / fish / xonsh). Shared settings live in `dot_config/mise/conf.d/00-baseline.toml`. Per-machine `[tools]` lives in `~/.config/mise/config.toml`, which is intentionally untracked so `mise use -g` writes there freely without creating chezmoi drift.
 - [**conda**](https://github.com/conda-forge/miniforge): Lazy-load setup for fast shell startup; xonsh wraps `conda shell.xonsh hook` so a fresh shell doesn't pay the ~720 ms init cost until the first `conda` invocation.
 - [**fzf**](https://github.com/junegunn/fzf): Fuzzy finder, set up in zsh / fish with Catppuccin Mocha colors.
 

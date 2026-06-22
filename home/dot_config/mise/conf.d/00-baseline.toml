@@ -5,7 +5,5 @@
 [tools]
 usage = "latest"
 
-[settings.go]
-default_packages_file = "~/.config/mise/default-go-packages"
-# Keep `go install` output stable in ~/go/bin across version switches
-set_gobin = false
+[settings]
+go_default_packages_file = "~/.config/mise/default-go-packages"
