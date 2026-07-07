@@ -16,7 +16,7 @@ From the repository root:
 
 ## What It Does
 
-1) Builds an Ubuntu 22.04 image with curl, git, sudo, fish, zsh, mise, bat, ripgrep, fd, and chezmoi preinstalled under a non-root user (`testuser`).
+1) Builds an Ubuntu 24.04 image with curl, git, sudo, fish, zsh, mise, bat, ripgrep, fd, and chezmoi preinstalled under a non-root user (`testuser`).
 2) Runs `tests/container-test.sh` inside the container, which:
    - Copies the repo to `~/.local/share/chezmoi`
    - Runs `chezmoi apply`, then re-runs `chezmoi apply --exclude=scripts` to check file idempotency and a clean `chezmoi diff --exclude=scripts`

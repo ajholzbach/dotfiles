@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -31,7 +31,7 @@ RUN curl -fsSL https://mise.run | sh
 
 # xonsh smoke-test dependency. Minimal install (ptk extras + catppuccin theme) so
 # rc.xsh's $XONSH_COLOR_STYLE = 'catppuccin-mocha' resolves without warnings
-RUN python3 -m pip install --user 'xonsh[ptk]' 'catppuccin[pygments]'
+RUN python3 -m pip install --user --break-system-packages 'xonsh[ptk]' 'catppuccin[pygments]'
 
 ENV PATH="/home/testuser/.local/bin:/home/testuser/bin:${PATH}"
 

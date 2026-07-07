@@ -8,6 +8,10 @@ log "Setting up chezmoi source directory..."
 mkdir -p ~/.local/share
 cp -r /dotfiles ~/.local/share/chezmoi
 
+log "Preparing unmanaged kubectl completion conflict..."
+mkdir -p "$HOME/.config/fish/completions"
+printf '%s\n' '# unmanaged placeholder that Fisher should replace' > "$HOME/.config/fish/completions/kubectl.fish"
+
 echo ""
 log "Running chezmoi apply..."
 apply_output=""
@@ -103,6 +107,12 @@ assert_file "$HOME/.config/fish/completions/rg.fish" \
 assert_file "$HOME/.config/fish/completions/fd.fish" \
     "fd fish completions installed" \
     "fd fish completions missing"
+
+if grep -Fq "kubectl completion fish | source" "$HOME/.config/fish/completions/kubectl.fish"; then
+    ok "kubectl Fisher completion replaced unmanaged placeholder"
+else
+    fail "kubectl Fisher completion did not replace unmanaged placeholder"
+fi
 
 assert_fonts 4
 
