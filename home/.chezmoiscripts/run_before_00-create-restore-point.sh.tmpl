@@ -1,0 +1,152 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/usr/bin/env sh
+set -eu
+
+umask 077
+
+STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
+CURRENT_BACKUP="$STATE_ROOT/current-backup"
+
+die() {
+    printf 'Error: %s\n' "$*" >&2
+    exit 1
+}
+
+validate_relative_path() {
+    case "$1" in
+        ''|.|./*|/*|..|../*|*/../*|*/..)
+            die "unsafe managed path from chezmoi: $1"
+            ;;
+    esac
+}
+
+write_managed_list() {
+    chezmoi managed \
+        --include=files,symlinks \
+        --path-style=relative > "$1"
+    [ -s "$1" ] || die "chezmoi returned an empty managed-file list; refusing to apply without a restore manifest."
+}
+
+command -v chezmoi >/dev/null 2>&1 || \
+    die "chezmoi is required to create the pre-install restore point."
+
+# Keep a union of every path this repository has managed. This script runs
+# before every apply so a path introduced by a later repository update is
+# captured before chezmoi first changes it.
+if [ -e "$CURRENT_BACKUP" ] || [ -L "$CURRENT_BACKUP" ]; then
+    [ -f "$CURRENT_BACKUP" ] && [ ! -L "$CURRENT_BACKUP" ] && [ -s "$CURRENT_BACKUP" ] || \
+        die "the restore-point pointer is not a non-empty regular file: $CURRENT_BACKUP"
+
+    backup_id="$(sed -n '1p' "$CURRENT_BACKUP")"
+    case "$backup_id" in
+        ''|*/*|*'..'*) die "invalid restore-point identifier: $backup_id" ;;
+    esac
+
+    backup_dir="$STATE_ROOT/backups/$backup_id"
+    managed_manifest="$backup_dir/managed-files.txt"
+    existing_manifest="$backup_dir/existing-files.txt"
+    [ -d "$backup_dir" ] && [ ! -L "$backup_dir" ] && \
+        [ -f "$managed_manifest" ] && [ ! -L "$managed_manifest" ] && \
+        [ -s "$managed_manifest" ] && \
+        [ -f "$existing_manifest" ] && [ ! -L "$existing_manifest" ] || \
+        die "restore point $backup_id is incomplete; refusing to apply."
+
+    current_managed="$backup_dir/.current-managed.$$"
+    next_managed="$backup_dir/.managed-files.$$"
+    next_existing="$backup_dir/.existing-files.$$"
+    cleanup_reconcile() {
+        rm -f "$current_managed" "$next_managed" "$next_existing"
+    }
+    trap cleanup_reconcile EXIT
+    trap 'exit 1' HUP INT TERM
+
+    write_managed_list "$current_managed"
+    cp -p "$managed_manifest" "$next_managed"
+    cp -p "$existing_manifest" "$next_existing"
+    added=0
+
+    while IFS= read -r relative_path; do
+        validate_relative_path "$relative_path"
+        if grep -Fqx -e "$relative_path" "$next_managed"; then
+            continue
+        fi
+
+        target="$HOME/$relative_path"
+        if [ -d "$target" ] && [ ! -L "$target" ]; then
+            die "refusing to replace a directory where chezmoi expects a file: $target"
+        fi
+
+        if grep -Fqx -e "$relative_path" "$next_existing"; then
+            original="$backup_dir/files/$relative_path"
+            if [ ! -e "$original" ] && [ ! -L "$original" ]; then
+                die "restore manifest references a missing original: $original"
+            fi
+        elif [ -e "$target" ] || [ -L "$target" ]; then
+            destination="$backup_dir/files/$relative_path"
+            mkdir -p "$(dirname "$destination")"
+            cp -pP "$target" "$destination"
+            printf '%s\n' "$relative_path" >> "$next_existing"
+        fi
+        printf '%s\n' "$relative_path" >> "$next_managed"
+        added=$((added + 1))
+    done < "$current_managed"
+
+    # Move the existing-file manifest first. If the process is interrupted
+    # between these two atomic renames, the next apply can safely reconcile it
+    # again without losing an original.
+    mv "$next_existing" "$existing_manifest"
+    mv "$next_managed" "$managed_manifest"
+    rm -f "$current_managed"
+    trap - EXIT HUP INT TERM
+
+    if [ "$added" -gt 0 ]; then
+        printf 'Extended dotfiles restore point with %s new managed path(s): %s\n' \
+            "$added" "$backup_dir"
+    else
+        printf 'Keeping existing dotfiles restore point: %s\n' "$backup_dir"
+    fi
+    exit 0
+fi
+
+backup_id="$(date -u '+%Y%m%dT%H%M%SZ')-$$"
+backups_dir="$STATE_ROOT/backups"
+staging="$backups_dir/.${backup_id}.tmp"
+backup_dir="$backups_dir/$backup_id"
+
+cleanup_initial() {
+    rm -rf "$staging"
+}
+trap cleanup_initial EXIT
+trap 'exit 1' HUP INT TERM
+
+mkdir -p "$staging/files"
+managed_manifest="$staging/managed-files.txt"
+existing_manifest="$staging/existing-files.txt"
+write_managed_list "$managed_manifest"
+: > "$existing_manifest"
+
+while IFS= read -r relative_path; do
+    validate_relative_path "$relative_path"
+    target="$HOME/$relative_path"
+
+    if [ -d "$target" ] && [ ! -L "$target" ]; then
+        die "refusing to replace a directory where chezmoi expects a file: $target"
+    fi
+
+    if [ -e "$target" ] || [ -L "$target" ]; then
+        destination="$staging/files/$relative_path"
+        mkdir -p "$(dirname "$destination")"
+        cp -pP "$target" "$destination"
+        printf '%s\n' "$relative_path" >> "$existing_manifest"
+    fi
+done < "$managed_manifest"
+
+mv "$staging" "$backup_dir"
+trap - EXIT HUP INT TERM
+
+current_tmp="$STATE_ROOT/.current-backup.$$"
+printf '%s\n' "$backup_id" > "$current_tmp"
+mv "$current_tmp" "$CURRENT_BACKUP"
+
+printf 'Created pre-install restore point: %s\n' "$backup_dir"
+{{- end }}

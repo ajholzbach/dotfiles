@@ -1,0 +1,11 @@
+theme = Catppuccin Mocha
+font-family = MesloLGS Nerd Font
+{{- if eq .chezmoi.os "darwin" }}
+window-colorspace = display-p3
+auto-update-channel = stable
+macos-titlebar-style = tabs
+{{- end }}
+confirm-close-surface = false
+shell-integration-features = sudo,ssh-env,ssh-terminfo
+scrollback-limit = 20000000
+keybind = shift+enter=text:\x1b\r

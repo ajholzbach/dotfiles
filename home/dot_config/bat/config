@@ -1,8 +1,8 @@
 # Disable paging
 --paging=never
 
-# Always colorize output
---color=always
+# Colorize terminals without leaking ANSI escapes into redirected output
+--color=auto
 
 # Set the syntax highlighting theme
 --theme="Catppuccin Mocha"

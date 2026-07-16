@@ -41,33 +41,37 @@ assert_file() {
     fi
 }
 
-assert_fonts() {
-    local min_expected="$1"
-    local count=0
-    for dir in "$HOME/.local/share/fonts" "$HOME/Library/Fonts"; do
-        [ -d "$dir" ] || continue
-        local found
-        found=$(find "$dir" -name "MesloLGS*Nerd*Font*.ttf" 2>/dev/null | wc -l | tr -d ' ')
-        if [ "$found" -gt 0 ]; then
-            count=$((count + found))
-        fi
-    done
-
-    if [ "$count" -ge "$min_expected" ]; then
-        ok "MesloLGS Nerd Font installed ($count variants)"
+assert_nonempty_file() {
+    local path="$1"
+    local success_msg="$2"
+    local fail_msg="$3"
+    if [ -s "$path" ]; then
+        ok "$success_msg"
     else
-        fail "Fonts missing (found $count, expected at least $min_expected)"
+        fail "$fail_msg"
     fi
 }
 
-assert_clean_diff() {
-    local diff_output=""
-    diff_output="$(chezmoi diff --exclude=scripts 2>/dev/null || true)"
-    if [ -z "$diff_output" ]; then
-        ok "chezmoi diff clean after re-apply with scripts excluded"
+assert_absent() {
+    local path="$1"
+    local success_msg="$2"
+    local fail_msg="$3"
+    if [ ! -e "$path" ] && [ ! -L "$path" ]; then
+        ok "$success_msg"
     else
-        fail "chezmoi diff not clean after re-apply with scripts excluded"
-        echo "$diff_output"
+        fail "$fail_msg"
+    fi
+}
+
+assert_equal() {
+    local expected="$1"
+    local actual="$2"
+    local success_msg="$3"
+    local fail_msg="$4"
+    if [ "$expected" = "$actual" ]; then
+        ok "$success_msg"
+    else
+        fail "$fail_msg (expected '$expected', got '$actual')"
     fi
 }
 

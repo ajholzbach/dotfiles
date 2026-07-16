@@ -1,25 +1,21 @@
-FROM ubuntu:24.04
+FROM archlinux:base
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && apt-get install -y \
+# Pacman's package sandbox is incompatible with amd64 emulation in some Docker
+# runtimes. This image is disposable, and --disable-sandbox works natively too.
+RUN pacman --disable-sandbox -Syu --noconfirm --needed \
     bat \
     ca-certificates \
     curl \
-    fd-find \
+    fd \
     fish \
     fzf \
     git \
-    python3-pip \
+    python-pip \
     ripgrep \
     tmux \
     vim \
     zoxide \
-    zsh \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN ln -sf /usr/bin/batcat /usr/local/bin/bat && \
-    ln -sf /usr/bin/fdfind /usr/local/bin/fd
+    zsh
 
 RUN useradd -m -s /bin/bash testuser
 
@@ -33,8 +29,6 @@ RUN test -n "$CHEZMOI_INSTALLER_CACHE_BUST" && \
     sh /tmp/get-chezmoi.sh -b /home/testuser/.local/bin && \
     rm -f /tmp/get-chezmoi.sh
 
-# xonsh smoke-test dependency. Minimal install (ptk extras + catppuccin theme) so
-# rc.xsh's $XONSH_COLOR_STYLE = 'catppuccin-mocha' resolves without warnings
 RUN python3 -m pip install --user --break-system-packages \
     'xonsh[ptk]' \
     'catppuccin[pygments]'

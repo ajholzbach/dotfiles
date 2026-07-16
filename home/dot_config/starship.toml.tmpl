@@ -218,5 +218,8 @@ symbol = " "
 [zig]
 symbol = " "
 
-{{ if hasKey . "kube" }}{{ .kube.starshipContexts }}{{ end }}
-
+{{- with (index . "kube") }}
+{{- with .starshipContexts }}
+{{ . }}
+{{- end }}
+{{- end }}

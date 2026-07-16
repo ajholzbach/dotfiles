@@ -1,0 +1,221 @@
+{{- if eq .chezmoi.os "windows" -}}
+$ErrorActionPreference = 'Stop'
+
+$stateBase = if ($env:XDG_STATE_HOME) {
+    $env:XDG_STATE_HOME
+} else {
+    Join-Path $HOME '.local\state'
+}
+$stateRoot = Join-Path $stateBase 'dotfiles'
+$currentBackup = Join-Path $stateRoot 'current-backup'
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+
+function Test-RealDirectory {
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $false
+    }
+
+    $item = Get-Item -LiteralPath $Path -Force
+    return $item.PSIsContainer -and [string]::IsNullOrWhiteSpace([string]$item.LinkType)
+}
+
+function Copy-PathPreservingLink {
+    param(
+        [string]$Source,
+        [string]$Destination
+    )
+
+    $item = Get-Item -LiteralPath $Source -Force
+    if ($item.LinkType -in @('SymbolicLink', 'Junction')) {
+        $linkTarget = @($item.Target)[0]
+        New-Item -ItemType $item.LinkType -Path $Destination -Target $linkTarget -Force | Out-Null
+    } else {
+        Copy-Item -LiteralPath $Source -Destination $Destination -Force
+    }
+}
+
+if (-not (Get-Command chezmoi -ErrorAction SilentlyContinue)) {
+    throw 'chezmoi is required to create the pre-install restore point.'
+}
+
+$managed = @(& chezmoi managed --include=files,symlinks --path-style=relative)
+if ($LASTEXITCODE -ne 0 -or $managed.Count -eq 0) {
+    throw 'chezmoi returned no managed files; refusing to apply without a restore manifest.'
+}
+$currentManagedSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+foreach ($relativePath in $managed) {
+    if ([string]::IsNullOrWhiteSpace($relativePath) -or
+        [IO.Path]::IsPathRooted($relativePath) -or
+        ($relativePath -split '[\\/]' -contains '..')) {
+        throw "Unsafe managed path from chezmoi: $relativePath"
+    }
+    if (-not $currentManagedSet.Add($relativePath)) {
+        throw "chezmoi returned a duplicate managed path: $relativePath"
+    }
+    $target = Join-Path $HOME $relativePath
+    if (Test-RealDirectory -Path $target) {
+        throw "Refusing to replace a directory where a managed file or symlink is expected: $target"
+    }
+}
+
+if (Test-Path -LiteralPath $currentBackup) {
+    $existingBackupId = [IO.File]::ReadAllText($currentBackup).Trim()
+    if ([string]::IsNullOrWhiteSpace($existingBackupId) -or
+        $existingBackupId.Contains('..') -or
+        $existingBackupId.Contains('/') -or
+        $existingBackupId.Contains('\')) {
+        throw "Invalid dotfiles restore-point identifier in ${currentBackup}: $existingBackupId"
+    }
+
+    $existingBackupDir = Join-Path (Join-Path $stateRoot 'backups') $existingBackupId
+    $managedManifest = Join-Path $existingBackupDir 'managed-files.txt'
+    $existingManifest = Join-Path $existingBackupDir 'existing-files.txt'
+    $profilesManifest = Join-Path $existingBackupDir 'powershell-profiles.json'
+    foreach ($requiredManifest in @($managedManifest, $existingManifest, $profilesManifest)) {
+        if (-not (Test-Path -LiteralPath $requiredManifest -PathType Leaf)) {
+            throw "Existing dotfiles restore point is incomplete: $existingBackupDir"
+        }
+    }
+
+    $savedManaged = [System.Collections.Generic.List[string]]::new()
+    $savedManagedSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($relativePath in [IO.File]::ReadAllLines($managedManifest)) {
+        if ([string]::IsNullOrWhiteSpace($relativePath) -or
+            [IO.Path]::IsPathRooted($relativePath) -or
+            ($relativePath -split '[\\/]' -contains '..') -or
+            -not $savedManagedSet.Add($relativePath)) {
+            throw "Unsafe or duplicate path in existing restore manifest: $relativePath"
+        }
+        $savedManaged.Add($relativePath)
+    }
+
+    $savedExisting = [System.Collections.Generic.List[string]]::new()
+    $savedExistingSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($relativePath in [IO.File]::ReadAllLines($existingManifest)) {
+        $savedBackup = Join-Path (Join-Path $existingBackupDir 'files') $relativePath
+        if ((-not $savedManagedSet.Contains($relativePath) -and
+                -not $currentManagedSet.Contains($relativePath)) -or
+            -not (Test-Path -LiteralPath $savedBackup) -or
+            (Test-RealDirectory -Path $savedBackup) -or
+            -not $savedExistingSet.Add($relativePath)) {
+            throw "Unsafe or duplicate path in existing-files manifest: $relativePath"
+        }
+        $savedExisting.Add($relativePath)
+    }
+
+    $addedCount = 0
+    foreach ($relativePath in $managed) {
+        if ($savedManagedSet.Add($relativePath)) {
+            $target = Join-Path $HOME $relativePath
+            if (Test-Path -LiteralPath $target) {
+                $destination = Join-Path (Join-Path $existingBackupDir 'files') $relativePath
+                if (-not $savedExistingSet.Contains($relativePath)) {
+                    New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+                    Copy-PathPreservingLink -Source $target -Destination $destination
+                    $savedExisting.Add($relativePath)
+                    [void]$savedExistingSet.Add($relativePath)
+                }
+            }
+            $savedManaged.Add($relativePath)
+            $addedCount++
+        }
+    }
+
+    if ($addedCount -gt 0) {
+        $managedTemporary = "$managedManifest.$PID.tmp"
+        $existingTemporary = "$existingManifest.$PID.tmp"
+        try {
+            [IO.File]::WriteAllLines($managedTemporary, $savedManaged, $utf8NoBom)
+            [IO.File]::WriteAllLines($existingTemporary, $savedExisting, $utf8NoBom)
+
+            # Replace existing-files first. An interruption between the two
+            # replacements leaves a safely detectable mismatch, never a new
+            # target that uninstall would incorrectly treat as disposable.
+            Move-Item -LiteralPath $existingTemporary -Destination $existingManifest -Force
+            Move-Item -LiteralPath $managedTemporary -Destination $managedManifest -Force
+        } finally {
+            foreach ($temporary in @($managedTemporary, $existingTemporary)) {
+                if (Test-Path -LiteralPath $temporary) {
+                    Remove-Item -LiteralPath $temporary -Force
+                }
+            }
+        }
+        Write-Host "Added $addedCount newly managed target(s) to restore point: $existingBackupId"
+    } else {
+        Write-Host "Keeping existing dotfiles restore point: $existingBackupId"
+    }
+    exit 0
+}
+
+$backupId = '{0}-{1}' -f [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ'), $PID
+$backupsDir = Join-Path $stateRoot 'backups'
+$staging = Join-Path $backupsDir ".$backupId.tmp"
+$backupDir = Join-Path $backupsDir $backupId
+
+try {
+    New-Item -ItemType Directory -Path (Join-Path $staging 'files') -Force | Out-Null
+
+    $existing = [System.Collections.Generic.List[string]]::new()
+    foreach ($relativePath in $managed) {
+        $target = Join-Path $HOME $relativePath
+        if (Test-Path -LiteralPath $target) {
+            $destination = Join-Path (Join-Path $staging 'files') $relativePath
+            New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+            Copy-PathPreservingLink -Source $target -Destination $destination
+            $existing.Add($relativePath)
+        }
+    }
+
+    [IO.File]::WriteAllLines((Join-Path $staging 'managed-files.txt'), $managed, $utf8NoBom)
+    [IO.File]::WriteAllLines((Join-Path $staging 'existing-files.txt'), $existing, $utf8NoBom)
+
+    $documents = [Environment]::GetFolderPath([Environment+SpecialFolder]::MyDocuments)
+    if ([string]::IsNullOrWhiteSpace($documents)) {
+        $documents = Join-Path $HOME 'Documents'
+    }
+
+    $profilePaths = @(
+        (Join-Path $documents 'PowerShell\Profile.ps1'),
+        (Join-Path $documents 'WindowsPowerShell\Profile.ps1')
+    )
+    $profileRecords = @()
+    for ($index = 0; $index -lt $profilePaths.Count; $index++) {
+        $profilePath = $profilePaths[$index]
+        $exists = Test-Path -LiteralPath $profilePath
+        if ($exists -and (Test-RealDirectory -Path $profilePath)) {
+            throw "Refusing to replace a directory where a PowerShell profile file is expected: $profilePath"
+        }
+        if ($exists) {
+            $profileBackup = Join-Path $staging "profiles\$index"
+            New-Item -ItemType Directory -Path (Split-Path -Parent $profileBackup) -Force | Out-Null
+            Copy-PathPreservingLink -Source $profilePath -Destination $profileBackup
+        }
+        $profileRecords += [PSCustomObject]@{
+            Path = $profilePath
+            Existed = $exists
+            Backup = "profiles/$index"
+        }
+    }
+    $profileJson = $profileRecords | ConvertTo-Json -Depth 3
+    [IO.File]::WriteAllText((Join-Path $staging 'powershell-profiles.json'), $profileJson, $utf8NoBom)
+
+    Move-Item -LiteralPath $staging -Destination $backupDir
+    New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
+    $currentBackupTemporary = "$currentBackup.$PID.tmp"
+    try {
+        [IO.File]::WriteAllText($currentBackupTemporary, $backupId + [Environment]::NewLine, $utf8NoBom)
+        Move-Item -LiteralPath $currentBackupTemporary -Destination $currentBackup -Force
+    } finally {
+        if (Test-Path -LiteralPath $currentBackupTemporary) {
+            Remove-Item -LiteralPath $currentBackupTemporary -Force
+        }
+    }
+    Write-Host "Created pre-install restore point: $backupDir"
+} finally {
+    if (Test-Path -LiteralPath $staging) {
+        Remove-Item -LiteralPath $staging -Recurse -Force
+    }
+}
+{{- end }}

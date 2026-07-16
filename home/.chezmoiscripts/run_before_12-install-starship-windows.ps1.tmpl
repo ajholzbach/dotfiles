@@ -1,0 +1,102 @@
+{{- if eq .chezmoi.os "windows" -}}
+$ErrorActionPreference = 'Stop'
+$starshipVersionPattern = '(?m)^starship (?<Version>(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)(?:\s|$)'
+
+if (Get-Command starship -ErrorAction SilentlyContinue) {
+    $LASTEXITCODE = $null
+    $existingVersion = @(& starship --version 2>$null)
+    $existingVersionSucceeded = $?
+    $existingVersionExitCode = $LASTEXITCODE
+    if (-not $existingVersionSucceeded -or
+        ($null -ne $existingVersionExitCode -and $existingVersionExitCode -ne 0) -or
+        ($existingVersion -join "`n") -notmatch $starshipVersionPattern) {
+        throw "A command named 'starship' is on PATH, but it did not return a valid version."
+    }
+    Write-Host "Starship is already installed: $($existingVersion[0])"
+    exit 0
+}
+
+$manager = $null
+$packageExitCode = $null
+$packageInvocationSucceeded = $false
+if (Get-Command winget -ErrorAction SilentlyContinue) {
+    Write-Host 'Installing Starship with winget...'
+    $LASTEXITCODE = $null
+    & winget install --id Starship.Starship --exact --source winget --scope user --installer-type portable --accept-package-agreements --accept-source-agreements --silent
+    $packageInvocationSucceeded = $?
+    $packageExitCode = $LASTEXITCODE
+    $manager = 'winget'
+} elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+    Write-Host 'Installing Starship with Scoop...'
+    $LASTEXITCODE = $null
+    & scoop install starship
+    $packageInvocationSucceeded = $?
+    $packageExitCode = $LASTEXITCODE
+    $manager = 'scoop'
+} else {
+    throw 'Install winget or Scoop, then re-run chezmoi apply to install Starship.'
+}
+
+if (-not $packageInvocationSucceeded -or
+    ($null -ne $packageExitCode -and $packageExitCode -ne 0)) {
+    $exitDescription = if ($null -eq $packageExitCode) { 'PowerShell command failure' } else { "exit $packageExitCode" }
+    throw "The package manager failed to install Starship ($exitDescription)."
+}
+
+$stateBase = if ($env:XDG_STATE_HOME) { $env:XDG_STATE_HOME } else { Join-Path $HOME '.local\state' }
+$stateRoot = Join-Path $stateBase 'dotfiles'
+New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
+$marker = Join-Path $stateRoot 'starship-installed-by-dotfiles'
+$markerTemporary = "$marker.$PID.tmp"
+function Write-StarshipOwnershipMarker {
+    param([AllowNull()][string]$Version)
+
+    $markerData = [ordered]@{ Manager = $manager }
+    if (-not [string]::IsNullOrWhiteSpace($Version)) {
+        $markerData['Version'] = $Version
+    }
+
+    try {
+        [IO.File]::WriteAllText(
+            $markerTemporary,
+            (($markerData | ConvertTo-Json -Compress) + [Environment]::NewLine),
+            (New-Object System.Text.UTF8Encoding($false))
+        )
+        Move-Item -LiteralPath $markerTemporary -Destination $marker -Force
+    } finally {
+        if (Test-Path -LiteralPath $markerTemporary) {
+            Remove-Item -LiteralPath $markerTemporary -Force
+        }
+    }
+}
+
+# Record ownership immediately after a successful package operation. If PATH
+# refresh or version validation fails, uninstall can still remove the package.
+Write-StarshipOwnershipMarker -Version $null
+
+$machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+$pathEntries = @($env:PATH, $machinePath, $userPath) |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+$env:PATH = $pathEntries -join [IO.Path]::PathSeparator
+
+if (-not (Get-Command starship -ErrorAction SilentlyContinue)) {
+    throw 'Starship was installed and ownership was recorded, but its executable is not available on PATH. Open a new PowerShell and re-run chezmoi apply, or run the dotfiles uninstaller.'
+}
+
+$LASTEXITCODE = $null
+$starshipVersion = @(& starship --version 2>$null)
+$starshipVersionSucceeded = $?
+$starshipVersionExitCode = $LASTEXITCODE
+$starshipVersionText = $starshipVersion -join "`n"
+$starshipVersionMatch = [regex]::Match($starshipVersionText, $starshipVersionPattern)
+if (-not $starshipVersionSucceeded -or
+    ($null -ne $starshipVersionExitCode -and $starshipVersionExitCode -ne 0) -or
+    -not $starshipVersionMatch.Success) {
+    throw "Starship was installed, but did not return a valid semantic version: $($starshipVersion -join ' '). Package ownership was recorded for uninstall."
+}
+
+$installedVersion = $starshipVersionMatch.Groups['Version'].Value
+Write-StarshipOwnershipMarker -Version $installedVersion
+Write-Host "Installed Starship $installedVersion with $manager."
+{{- end }}

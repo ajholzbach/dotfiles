@@ -1,0 +1,153 @@
+{{- if eq .chezmoi.os "windows" -}}
+$ErrorActionPreference = 'Stop'
+
+# Reconcile these small loader blocks on every apply so a recreated profile is
+# repaired without replacing any user-owned content around it.
+$documents = [Environment]::GetFolderPath([Environment+SpecialFolder]::MyDocuments)
+if ([string]::IsNullOrWhiteSpace($documents)) {
+    $documents = Join-Path $HOME 'Documents'
+}
+
+$profilePaths = @(
+    (Join-Path $documents 'PowerShell\Profile.ps1'),
+    (Join-Path $documents 'WindowsPowerShell\Profile.ps1')
+)
+
+$beginMarker = '# >>> dotfiles managed PowerShell profile >>>'
+$endMarker = '# <<< dotfiles managed PowerShell profile <<<'
+$sourceLine = '. (Join-Path (Join-Path $HOME ''.config'') ''powershell\profile.ps1'')'
+$escapedBeginMarker = [regex]::Escape($beginMarker)
+$escapedEndMarker = [regex]::Escape($endMarker)
+$beginLinePattern = '(?m)^' + $escapedBeginMarker + '\r?$'
+$endLinePattern = '(?m)^' + $escapedEndMarker + '\r?$'
+$blockPattern = '(?ms)^' + $escapedBeginMarker + '\r?\n.*?^' +
+    $escapedEndMarker + '\r?(?:\n|$)'
+
+function Read-ProfileText {
+    param([string]$Path)
+
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $offset = 0
+    $encoding = $null
+
+    if ($bytes.Length -ge 4 -and
+        $bytes[0] -eq 0x00 -and $bytes[1] -eq 0x00 -and
+        $bytes[2] -eq 0xFE -and $bytes[3] -eq 0xFF) {
+        $encoding = New-Object System.Text.UTF32Encoding($true, $true)
+        $offset = 4
+    } elseif ($bytes.Length -ge 4 -and
+        $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE -and
+        $bytes[2] -eq 0x00 -and $bytes[3] -eq 0x00) {
+        $encoding = New-Object System.Text.UTF32Encoding($false, $true)
+        $offset = 4
+    } elseif ($bytes.Length -ge 3 -and
+        $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+        $encoding = New-Object System.Text.UTF8Encoding($true)
+        $offset = 3
+    } elseif ($bytes.Length -ge 2 -and
+        $bytes[0] -eq 0xFE -and $bytes[1] -eq 0xFF) {
+        $encoding = New-Object System.Text.UnicodeEncoding($true, $true)
+        $offset = 2
+    } elseif ($bytes.Length -ge 2 -and
+        $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) {
+        $encoding = New-Object System.Text.UnicodeEncoding($false, $true)
+        $offset = 2
+    } else {
+        $strictUtf8 = New-Object System.Text.UTF8Encoding($false, $true)
+        try {
+            $content = $strictUtf8.GetString($bytes)
+            $encoding = New-Object System.Text.UTF8Encoding($false)
+        } catch {
+            $ansiCodePage = [Globalization.CultureInfo]::CurrentCulture.TextInfo.ANSICodePage
+            $encoding = [Text.Encoding]::GetEncoding($ansiCodePage)
+            $content = $encoding.GetString($bytes)
+        }
+
+        return [PSCustomObject]@{ Content = $content; Encoding = $encoding }
+    }
+
+    $content = $encoding.GetString($bytes, $offset, $bytes.Length - $offset)
+    return [PSCustomObject]@{ Content = $content; Encoding = $encoding }
+}
+
+$updates = New-Object System.Collections.Generic.List[object]
+foreach ($profilePath in $profilePaths) {
+    $content = ''
+    $encoding = New-Object System.Text.UTF8Encoding($true)
+    if (Test-Path -LiteralPath $profilePath) {
+        $profileText = Read-ProfileText -Path $profilePath
+        $content = [string]$profileText.Content
+        $encoding = $profileText.Encoding
+    }
+
+    $beginLiteralCount = ([regex]::Matches($content, $escapedBeginMarker)).Count
+    $endLiteralCount = ([regex]::Matches($content, $escapedEndMarker)).Count
+    $beginCount = ([regex]::Matches($content, $beginLinePattern)).Count
+    $endCount = ([regex]::Matches($content, $endLinePattern)).Count
+    $managedBlocks = [regex]::Matches($content, $blockPattern)
+
+    if ($beginLiteralCount -ne $beginCount -or
+        $endLiteralCount -ne $endCount -or
+        $beginCount -ne $endCount -or
+        $managedBlocks.Count -ne $beginCount) {
+        throw "Malformed managed PowerShell profile markers in $profilePath; restore or remove the partial marker before applying."
+    }
+
+    $newline = if ($content.Contains("`r`n")) {
+        "`r`n"
+    } elseif ($content.Contains("`n")) {
+        "`n"
+    } else {
+        [Environment]::NewLine
+    }
+    $block = @($beginMarker, $sourceLine, $endMarker) -join $newline
+
+    if ($managedBlocks.Count -gt 0) {
+        $firstBlock = $managedBlocks[0]
+        $beforeBlock = $content.Substring(0, $firstBlock.Index)
+        $afterBlock = $content.Substring($firstBlock.Index + $firstBlock.Length)
+        $afterBlock = [regex]::Replace($afterBlock, $blockPattern, '')
+        $updated = $beforeBlock + $block + $newline + $afterBlock
+    } else {
+        $separator = if ($content.Length -gt 0 -and -not $content.EndsWith("`n")) {
+            $newline
+        } else {
+            ''
+        }
+        $updated = $content + $separator + $block + $newline
+    }
+
+    $updates.Add([PSCustomObject]@{
+        Path = $profilePath
+        Content = $content
+        Updated = $updated
+        Encoding = $encoding
+    })
+}
+
+# Validate both profiles before modifying either one. This avoids a partial
+# update when the second profile contains a malformed marker block.
+foreach ($update in $updates) {
+    if ($update.Updated -ne $update.Content) {
+        New-Item -ItemType Directory -Path (Split-Path -Parent $update.Path) -Force | Out-Null
+        $temporary = "$($update.Path).dotfiles.$PID.tmp"
+        $replacementBackup = "$($update.Path).dotfiles.$PID.backup"
+        try {
+            [IO.File]::WriteAllText($temporary, $update.Updated, $update.Encoding)
+            if (Test-Path -LiteralPath $update.Path) {
+                [IO.File]::Replace($temporary, $update.Path, $replacementBackup)
+            } else {
+                Move-Item -LiteralPath $temporary -Destination $update.Path
+            }
+            Write-Host "Updated PowerShell profile shim: $($update.Path)"
+        } finally {
+            if (Test-Path -LiteralPath $temporary) {
+                Remove-Item -LiteralPath $temporary -Force
+            }
+            if (Test-Path -LiteralPath $replacementBackup) {
+                Remove-Item -LiteralPath $replacementBackup -Force
+            }
+        }
+    }
+}
+{{- end }}

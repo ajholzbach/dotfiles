@@ -1,153 +1,105 @@
-# Dotfiles Testing
+# Docker test gate
 
-Lightweight Docker-based tests for the chezmoi source. The harness builds a minimal Ubuntu image, applies the dotfiles, re-applies managed files to ensure idempotency, and asserts a few key installs.
+The local Docker suite is the required validation gate for this repository. It tests a fresh installation, a full idempotent re-apply, and restoration of the pre-install state. Every active template in `home/.chezmoiscripts/` must have an entry in the script coverage manifest or the runner fails before building an image.
 
 ## Prerequisites
 
-- Docker installed and running
+- Docker with a running daemon
+- Network access while resolving the current chezmoi, Python, and Starship releases
+- amd64 emulation for the Arch and PowerShell images when the host is ARM; Docker Desktop and OrbStack normally provide it
 
-## Run the Test
+## Run
 
 From the repository root:
 
-```bash
-./tests/test.sh
+```sh
+./tests/test.sh all          # complete required gate
+./tests/test.sh minimal      # no optional shells or tools
+./tests/test.sh ubuntu       # Ubuntu compatibility image
+./tests/test.sh arch         # Arch compatibility image
+./tests/test.sh powershell   # rendered Windows scripts under pwsh
 ```
 
-## What It Does
+Running `./tests/test.sh` without a selector is equivalent to `all`.
 
-1) Builds an Ubuntu 24.04 image with curl, git, sudo, fish, zsh, mise, bat, ripgrep, fd, and chezmoi preinstalled under a non-root user (`testuser`).
-2) Runs `tests/container-test.sh` inside the container, which:
-   - Copies the repo to `~/.local/share/chezmoi`
-   - Runs `chezmoi apply`, then re-runs `chezmoi apply --exclude=scripts` to check file idempotency and a clean `chezmoi diff --exclude=scripts`
-   - Asserts key artifacts and shell startup:
-     - Starship installed
-     - mise installed
-     - `usage` installed via mise
-     - Antidote installed
-     - `.zshrc` present
-     - `~/.config/starship.toml` present
-     - `~/.config/fish/completions/mise.fish` present
-     - `~/.config/fish/completions/chezmoi.fish`, `bat.fish`, `rg.fish`, and `fd.fish` present
-     - MesloLGS Nerd Font (>=4 variants) in Linux/macOS font paths
-     - Git global `core.excludesfile` points to `~/.gitignore_global`
-     - `bat --list-themes` includes `Catppuccin Mocha`
-     - `zsh -ic 'exit'` succeeds
-     - `fish -ic 'exit'` succeeds
-     - Fisher is available inside fish
-3) Summarizes pass/fail counts and exits non-zero on any failure.
+## Matrix
 
-## Expected Output
+| Suite | Base | Purpose |
+|---|---|---|
+| `minimal` | Ubuntu 24.04 | Proves Bash plus Starship works without Fish, zsh, Xonsh, mise, bat, zoxide, fzf, tmux, Vim, or passwordless sudo |
+| `ubuntu` | Ubuntu 24.04 | Parses and starts the optional Bash/zsh/Fish/Xonsh setup and loads Vim/tmux configuration |
+| `arch` | Arch Linux | Exercises the same optional-tool path against rolling Arch userland and pacman package names |
+| `powershell` | PowerShell on Ubuntu 24.04 | Renders Windows-only templates and tests them with isolated WinGet/Scoop mocks and Windows-like profile fixtures |
 
-```
-Building Docker image...
-Running chezmoi installation test...
+The PowerShell image is deterministic compatibility coverage for Windows scripts. It does not claim to emulate the Windows kernel, registry, ACLs, path rules, or native package managers; a real Windows smoke test remains appropriate before a release that materially changes Windows behavior.
 
-==> Setting up chezmoi source directory...
-==> Running chezmoi apply...
-Installing MesloLGS Nerd Font...
-Installing starship with official installer...
-Installing antidote zsh plugin manager...
-==> Re-running chezmoi apply for idempotency...
-  ✓ Second chezmoi apply succeeded with scripts excluded
-  ✓ chezmoi diff clean after re-apply with scripts excluded
+## What the Linux suites prove
 
-==> Verification Results:
-  ✓ mise installed (mise 20XX.X.X)
-  ✓ usage installed via mise
-  ✓ Starship installed (starship X.Y.Z)
-  ✓ Antidote installed
-  ✓ .zshrc installed
-  ✓ Starship config installed
-  ✓ mise fish completions installed
-  ✓ chezmoi fish completions installed
-  ✓ bat fish completions installed
-  ✓ rg fish completions installed
-  ✓ fd fish completions installed
-  ✓ MesloLGS Nerd Font installed (4 variants)
-  ✓ git global excludesfile configured
-  ✓ bat cache built with Catppuccin theme
-  ✓ zsh startup succeeded
-  ✓ fish startup succeeded
-  ✓ Fisher available in fish
+Each Linux integration container:
 
-==> Summary: 20 passed, 0 failed
-==> All tests passed!
-```
+1. Starts with pre-existing `.bashrc`, `.profile`, Git ignore, and symlink fixtures.
+2. Runs the documented `chezmoi init --apply file:///dotfiles` flow as an unprivileged user.
+3. Verifies the restore-point manifests before checking managed output.
+4. Verifies a working Starship installation and ownership tracking.
+5. Starts every optional shell/tool available in that image without installing plugins automatically.
+6. Runs a second ordinary `chezmoi apply` with scripts enabled.
+7. Requires a clean managed-file diff after the second apply. Scripts are excluded only from this diff display because ordinary `run_` scripts are expected to appear as runnable every time; they are included in both actual applies.
+8. Runs uninstall first as a dry run and then for real.
+9. Verifies byte-for-byte content, mode, and symlink restoration; newly managed targets and installer-owned Starship must be gone.
 
-## Manual Testing
+The minimal image also asserts that the dotfiles neither require nor install optional tools.
+Git is present only because the isolated local repository uses a `file://` clone;
+chezmoi's built-in Git covers the documented HTTPS bootstrap when an external
+Git command is unavailable.
 
-To explore the container interactively:
+## What the PowerShell suite proves
 
-```bash
-docker build -t dotfiles-test tests/
-docker run --rm -it -v "$(pwd):/dotfiles:ro" dotfiles-test bash
-```
+The PowerShell suite renders templates with `.chezmoi.os` set to `windows`, then covers:
 
-Inside the container, run the same steps as the automated test:
+- restore-point creation for pre-existing and absent targets
+- Starship package-manager arguments and executable validation
+- package-manager ownership tracking and uninstall behavior
+- both PowerShell profile locations
+- preservation of content outside the managed marker block
+- repeated execution and duplicate-block repair
+- rejection of malformed marker state
+- restoration via `uninstall.ps1`
 
-```bash
-mkdir -p ~/.local/share
-cp -r /dotfiles ~/.local/share/chezmoi
-chezmoi apply -v
-chezmoi apply -v --exclude=scripts  # idempotency check for managed files
-chezmoi diff --exclude=scripts      # should be empty
-```
+## Test isolation
 
-Verify installations:
+The runner creates a temporary, allow-listed Git repository containing only the chezmoi source, uninstall helpers, and tests. The staged repository is mounted read-only at `/dotfiles`.
 
-```bash
-starship --version
-mise --version
-mise ls --installed usage
-ls ~/.antidote/
-ls ~/.local/share/fonts/
-ls ~/.config/starship.toml
-ls ~/.config/fish/completions/mise.fish
-ls ~/.config/fish/completions/chezmoi.fish
-ls ~/.config/fish/completions/bat.fish
-ls ~/.config/fish/completions/rg.fish
-ls ~/.config/fish/completions/fd.fish
-git config --global --get core.excludesfile
-bat --list-themes | grep 'Catppuccin Mocha'
-zsh -ic 'exit'
-fish -ic 'exit'
-fish -ic 'functions -q fisher'
-```
+The host repository's `.git` directory, ignored files, editor metadata, and environment tokens are not mounted or forwarded. This is intentional: installation scripts and downloaded programs inside a test container must never receive the host's GitHub token. Unignored files in the install/test surface—including new work in progress—are staged because they are potential commit contents and must be exercised by the gate.
 
-## Clean Up
+Known machine-local `local-env` source names are denied even if they have been
+force-added to Git. Store credentials only in the unmanaged destination files
+documented in the main README.
 
-The test container is automatically removed after it exits (`--rm` flag).
+The temporary repository and each test container are removed automatically. Docker images remain cached to make repeated runs faster. Every runner invocation pulls fresh upstream base metadata and supplies a unique cache key to the chezmoi installer layer. That forces a fresh download of the current chezmoi release and, in the optional-tool images, fresh resolution of the unpinned Xonsh and Catppuccin Python packages without rebuilding earlier operating-system package layers unnecessarily.
 
-To remove the Docker image:
+The managed source intentionally has no `.chezmoiversion` compatibility pin. Running the gate against the current chezmoi release makes upstream compatibility changes visible before the dotfiles are pushed.
 
-```bash
-docker rmi dotfiles-test
-```
+## Adding or changing a script
+
+When adding or renaming anything under `home/.chezmoiscripts/`:
+
+1. Add or update its coverage-manifest entry.
+2. Add success, already-satisfied, failure, idempotency, and restoration cases appropriate to its side effects.
+3. Run the narrow suite while iterating.
+4. Run `./tests/test.sh all` before pushing.
+
+The full gate deliberately includes scripts on the second apply. Excluding scripts would test only file rendering, not the idempotency requirement that applies to every chezmoi script.
 
 ## Troubleshooting
 
-**Test fails with "Docker daemon not running"**
-- Start Docker or OrbStack before running the test
+If Docker is unavailable, start Docker Desktop, OrbStack, or the system Docker daemon and rerun the command.
 
-**Test fails during chezmoi apply**
-- Check the error messages in the output
-- Try manual testing (see above) to explore the issue interactively
+If Arch or PowerShell reports an unsupported platform or an exec-format error on an ARM host, enable amd64 emulation in the container runtime. Both suites explicitly request `linux/amd64` for consistent behavior across hosts.
 
-**Font count shows 0 or wrong number**
-- The font installation may have partially failed
-- Check font script logs in the "Running chezmoi apply" section
+If an upstream build or download fails, rerun the same selector to distinguish a transient registry/network issue from a repository failure. Do not work around failures by forwarding personal credentials into the container.
 
-## CI Integration
+All selectors exit nonzero on failure, so the complete gate can be used directly by CI or a local pre-push workflow:
 
-The test exits with code 0 on success and code 1 on failure, making it suitable for CI pipelines:
-
-```bash
-./tests/test.sh && echo "Dotfiles valid" || echo "Dotfiles broken"
+```sh
+./tests/test.sh all
 ```
-
-## Notes
-
-- The `/dotfiles` mount point is an internal container path - your repository can have any name locally
-- The repository is mounted read-only to ensure tests never modify your files
-- Each test runs in a fresh container with no state persisted between runs

@@ -3,10 +3,30 @@ if [ -f "$HOME/.profile" ]; then
 fi
 
 # Per-machine env (untracked)
-if [ -f "$HOME/.config/local-env.sh" ]; then
+if [ -z "${DOTFILES_LOADING_LOCAL_ENV:-}" ] && [ -f "$HOME/.config/local-env.sh" ]; then
+    DOTFILES_LOADING_LOCAL_ENV=1
     source "$HOME/.config/local-env.sh"
+    unset DOTFILES_LOADING_LOCAL_ENV
 fi
 
-if command -v starship >/dev/null 2>&1; then
-    eval "$(starship init bash)"
-fi
+case $- in
+    *i*)
+        if command -v mise >/dev/null 2>&1; then
+            eval "$(mise activate bash)"
+        fi
+
+        if command -v zoxide >/dev/null 2>&1; then
+            eval "$(zoxide init bash)"
+            alias cd='z'
+            alias cdo='builtin cd'
+        fi
+
+        if command -v bat >/dev/null 2>&1; then
+            alias cat='bat --plain'
+        fi
+
+        if command -v starship >/dev/null 2>&1; then
+            eval "$(starship init bash)"
+        fi
+        ;;
+esac

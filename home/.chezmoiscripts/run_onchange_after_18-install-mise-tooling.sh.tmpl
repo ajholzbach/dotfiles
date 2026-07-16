@@ -1,9 +1,0 @@
-{{- if and (or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux")) (lookPath "mise") (not (lookPath "usage")) -}}
-#!/usr/bin/env bash
-set -euo pipefail
-
-# usage is pinned in dot_config/mise/conf.d/00-baseline.toml; install without
-# rewriting config (which would otherwise pollute the tracked baseline file).
-echo "Installing usage for mise completions..."
-mise install -y usage
-{{- end }}

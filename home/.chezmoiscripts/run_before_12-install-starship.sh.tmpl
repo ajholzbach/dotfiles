@@ -1,0 +1,111 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/usr/bin/env sh
+set -eu
+
+umask 077
+
+INSTALLER_URL="https://starship.rs/install.sh"
+INSTALL_DIR="$HOME/.local/bin"
+STARSHIP_PATH="$INSTALL_DIR/starship"
+STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
+INSTALL_MARKER="$STATE_ROOT/starship-installed-by-dotfiles"
+
+sha256_file() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | sed 's/[[:space:]].*$//'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$1" | sed 's/[[:space:]].*$//'
+    else
+        return 127
+    fi
+}
+
+validate_starship() {
+    starship_version="$("$1" --version 2>/dev/null)" || return 1
+    printf '%s\n' "$starship_version" | \
+        grep -Eq '^starship [0-9]+\.[0-9]+\.[0-9]+([[:space:]]|$)'
+}
+
+if existing_starship="$(command -v starship 2>/dev/null)"; then
+    if validate_starship "$existing_starship"; then
+        printf 'Starship is already installed: %s\n' "$starship_version"
+        exit 0
+    fi
+    printf 'Error: a Starship command was found at %s, but it cannot report a valid version.\n' \
+        "$existing_starship" >&2
+    exit 1
+fi
+
+# A valid user-local installation may not be on PATH until the managed profile
+# is applied. Preserve it as user-owned instead of overwriting and marking it.
+if [ -e "$STARSHIP_PATH" ] || [ -L "$STARSHIP_PATH" ]; then
+    if [ -x "$STARSHIP_PATH" ] && validate_starship "$STARSHIP_PATH"; then
+        printf 'Starship is already installed at %s: %s\n' \
+            "$STARSHIP_PATH" "$starship_version"
+        exit 0
+    fi
+    printf 'Error: refusing to overwrite a non-working path at %s.\n' \
+        "$STARSHIP_PATH" >&2
+    exit 1
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+    echo "Error: curl is required but not installed" >&2
+    echo "Please install curl and try again" >&2
+    exit 1
+fi
+
+if ! sha256_file /dev/null >/dev/null 2>&1; then
+    echo "Error: sha256sum or shasum is required to record Starship ownership safely." >&2
+    exit 1
+fi
+
+install_dir_created=0
+if [ ! -d "$INSTALL_DIR" ]; then
+    if [ -e "$INSTALL_DIR" ] || [ -L "$INSTALL_DIR" ]; then
+        printf 'Error: Starship install directory is not a directory: %s\n' \
+            "$INSTALL_DIR" >&2
+        exit 1
+    fi
+    mkdir -p "$INSTALL_DIR"
+    install_dir_created=1
+fi
+
+installer="$(mktemp)"
+install_succeeded=0
+cleanup() {
+    rm -f "$installer"
+    if [ "$install_succeeded" -ne 1 ]; then
+        rm -f "$STARSHIP_PATH"
+        if [ "$install_dir_created" -eq 1 ]; then
+            rmdir "$INSTALL_DIR" 2>/dev/null || true
+        fi
+    fi
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+
+printf 'Downloading the latest stable Starship installer...\n'
+curl --proto '=https' --tlsv1.2 -fsSL -o "$installer" "$INSTALLER_URL"
+
+printf 'Installing the latest stable Starship into %s...\n' "$INSTALL_DIR"
+sh "$installer" --yes --bin-dir "$INSTALL_DIR"
+
+if [ ! -x "$STARSHIP_PATH" ] || ! validate_starship "$STARSHIP_PATH"; then
+    echo "Error: Starship installation did not produce a working executable." >&2
+    exit 1
+fi
+
+starship_sha256="$(sha256_file "$STARSHIP_PATH")"
+mkdir -p "$STATE_ROOT"
+if [ -d "$INSTALL_MARKER" ] && [ ! -L "$INSTALL_MARKER" ]; then
+    printf 'Error: Starship ownership marker path is a directory: %s\n' \
+        "$INSTALL_MARKER" >&2
+    exit 1
+fi
+marker_tmp="$STATE_ROOT/.starship-installed-by-dotfiles.$$"
+printf '%s\n%s\n%s\n' \
+    "$STARSHIP_PATH" "$starship_sha256" "$install_dir_created" > "$marker_tmp"
+mv "$marker_tmp" "$INSTALL_MARKER"
+install_succeeded=1
+{{- end }}

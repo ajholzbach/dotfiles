@@ -8,13 +8,17 @@ import shutil
 import sys
 
 $XDG_CONFIG_HOME = ${...}.get('XDG_CONFIG_HOME', f'{$HOME}/.config')
+$STARSHIP_CONFIG = ${...}.get('STARSHIP_CONFIG', f'{$HOME}/.config/starship.toml')
+$BAT_CONFIG_PATH = ${...}.get('BAT_CONFIG_PATH', f'{$HOME}/.config/bat/config')
 
 # Per-machine env (untracked); source-bash reads the POSIX form
 if os.path.isfile(f'{$HOME}/.config/local-env.sh'):
     source-bash @(f'{$HOME}/.config/local-env.sh')
 
-if f'{$HOME}/.local/bin' not in $PATH:
-    $PATH.insert(0, f'{$HOME}/.local/bin')
+for _user_bin in (f'{$HOME}/bin', f'{$HOME}/.local/bin'):
+    if os.path.isdir(_user_bin) and _user_bin not in $PATH:
+        $PATH.insert(0, _user_bin)
+del _user_bin
 
 # /usr/local/bin doesn't exist on Windows
 if sys.platform != 'win32' and '/usr/local/bin' not in $PATH:
@@ -27,7 +31,7 @@ def _setup_homebrew():
         '/usr/local/bin/brew',                     # macOS Intel
         '/home/linuxbrew/.linuxbrew/bin/brew',     # Linuxbrew
     ):
-        if os.path.isfile(brew_bin):
+        if os.path.isfile(brew_bin) and os.access(brew_bin, os.X_OK):
             prefix = os.path.dirname(os.path.dirname(brew_bin))
             for p in (f'{prefix}/bin', f'{prefix}/sbin'):
                 if p not in $PATH:

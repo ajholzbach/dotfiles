@@ -1,9 +1,5 @@
-# Shared mise settings, tracked in chezmoi. Per-machine [tools] in ~/.config/mise/config.toml
-
-# Universal tool deps (needed by the dotfiles bootstrap; usage powers mise's
-# completion generation for the shell-completions script)
-[tools]
-usage = "latest"
+# Shared mise settings, tracked in chezmoi. Per-machine tools belong in
+# ~/.config/mise/config.toml; the dotfiles bootstrap does not require mise.
 
 [settings]
 go_default_packages_file = "~/.config/mise/default-go-packages"

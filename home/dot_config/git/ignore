@@ -1,0 +1,26 @@
+# Operating-system metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Icon
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+
+# Editor and temporary files
+*~
+*.swp
+*.swo
+*.swn
+*.swap
+\#*\#
+.\#*
+*.bak
+*.tmp
+*.temp
+*.orig

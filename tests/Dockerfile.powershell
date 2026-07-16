@@ -1,0 +1,26 @@
+FROM mcr.microsoft.com/powershell:ubuntu-24.04
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -s /bin/bash testuser
+
+USER testuser
+WORKDIR /home/testuser
+
+ARG CHEZMOI_INSTALLER_CACHE_BUST=manual-build
+RUN test -n "$CHEZMOI_INSTALLER_CACHE_BUST" && \
+    mkdir -p /home/testuser/.local/bin && \
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        https://get.chezmoi.io -o /tmp/get-chezmoi.sh && \
+    sh /tmp/get-chezmoi.sh -b /home/testuser/.local/bin && \
+    rm -f /tmp/get-chezmoi.sh
+
+ENV PATH="/home/testuser/.local/bin:/home/testuser/bin:${PATH}"
+
+CMD ["pwsh"]

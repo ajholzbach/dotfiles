@@ -22,61 +22,77 @@ zstyle ':completion:*' special-dirs true
 zstyle ':completion:*' use-cache yes
 zstyle ':completion:*' cache-path $HOME/.cache/zsh
 
-# OSX
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # Lazy-load conda (miniforge or miniconda) if installed
-    for _conda_root in /opt/homebrew/Caskroom/miniforge/base /opt/homebrew/Caskroom/miniconda/base; do
-        if [ -d "$_conda_root" ]; then
-            eval "conda() {
-                unset -f conda
-                __conda_setup=\"\$('$_conda_root/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)\"
-                if [ \$? -eq 0 ]; then
-                    eval \"\$__conda_setup\"
-                else
-                    if [ -f '$_conda_root/etc/profile.d/conda.sh' ]; then
-                        . '$_conda_root/etc/profile.d/conda.sh'
-                    else
-                        export PATH='$_conda_root/bin:'\$PATH
-                    fi
-                fi
-                unset __conda_setup
-                conda \"\$@\"
-            }"
+# Lazy-load Conda from common macOS and Linux locations.
+for _dotfiles_conda_root in \
+    /opt/homebrew/Caskroom/miniforge/base \
+    /opt/homebrew/Caskroom/miniconda/base \
+    /usr/local/Caskroom/miniforge/base \
+    /usr/local/Caskroom/miniconda/base \
+    "$HOME/miniforge3" \
+    "$HOME/miniconda3" \
+    "$HOME/anaconda3" \
+    /opt/miniforge3 \
+    /opt/miniconda3 \
+    /opt/conda; do
+    if [ -x "$_dotfiles_conda_root/bin/conda" ]; then
+        _dotfiles_conda_exe="$_dotfiles_conda_root/bin/conda"
+        conda() {
+            unset -f conda
+            local conda_hook
+            if ! conda_hook="$("$_dotfiles_conda_exe" shell.zsh hook 2>/dev/null)" || \
+                    [ -z "$conda_hook" ] || ! eval "$conda_hook"; then
+                export PATH="${_dotfiles_conda_exe:h}:$PATH"
+            fi
+            unset _dotfiles_conda_exe
+            conda "$@"
+        }
+        break
+    fi
+done
+unset _dotfiles_conda_root
+
+# Lazy-load NVM without assuming Homebrew.
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+for _dotfiles_nvm_script in \
+    "$NVM_DIR/nvm.sh" \
+    /opt/homebrew/opt/nvm/nvm.sh \
+    /usr/local/opt/nvm/nvm.sh; do
+    if [ -s "$_dotfiles_nvm_script" ]; then
+        nvm() {
+            unset -f nvm
+            . "$_dotfiles_nvm_script"
+            unset _dotfiles_nvm_script
+            nvm "$@"
+        }
+        break
+    fi
+done
+if (( ! $+functions[nvm] )); then
+    unset _dotfiles_nvm_script
+fi
+
+# Add pnpm's user-local home when it already exists.
+if [ -z "${PNPM_HOME:-}" ]; then
+    for _dotfiles_pnpm_home in "$HOME/Library/pnpm" "$HOME/.local/share/pnpm"; do
+        if [ -d "$_dotfiles_pnpm_home" ]; then
+            export PNPM_HOME="$_dotfiles_pnpm_home"
             break
         fi
     done
-    unset _conda_root
-
-    # Lazy-load nvm if installed
-    if [ -d "$HOME/.nvm" ] || [ -s "/opt/homebrew/opt/nvm/nvm.sh" ]; then
-        nvm() {
-        unset -f nvm
-        export NVM_DIR="$HOME/.nvm"
-        [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && . "/opt/homebrew/opt/nvm/nvm.sh"
-        [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && . "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
-        nvm "$@"
-        }
-    fi
-
-    # Lazy-load pnpm if installed
-    if command -v pnpm &> /dev/null || [ -d "$HOME/Library/pnpm" ]; then
-        pnpm() {
-        unset -f pnpm
-        # pnpm
-        export PNPM_HOME="$HOME/Library/pnpm"
-        case ":$PATH:" in
+    unset _dotfiles_pnpm_home
+fi
+if [ -n "${PNPM_HOME:-}" ]; then
+    case ":$PATH:" in
         *":$PNPM_HOME:"*) ;;
         *) export PATH="$PNPM_HOME:$PATH" ;;
-        esac
-        # pnpm end
-        command pnpm "$@"
-        }
-    fi
+    esac
 fi
 
 # Per-machine env (untracked)
-if [ -f "$HOME/.config/local-env.sh" ]; then
+if [ -z "${DOTFILES_LOADING_LOCAL_ENV:-}" ] && [ -f "$HOME/.config/local-env.sh" ]; then
+    DOTFILES_LOADING_LOCAL_ENV=1
     source "$HOME/.config/local-env.sh"
+    unset DOTFILES_LOADING_LOCAL_ENV
 fi
 
 # Activate mise
@@ -107,17 +123,31 @@ if [ -f "$HOME/.antidote/antidote.zsh" ]; then
     # Lazy-load antidote and generate the static load file only when needed
     zsh_plugins=${ZDOTDIR:-$HOME}/.zsh_plugins
     if [[ ! ${zsh_plugins}.zsh -nt ${zsh_plugins}.txt ]]; then
-      (
-        source $HOME/.antidote/antidote.zsh
-        antidote bundle <${zsh_plugins}.txt >${zsh_plugins}.zsh
-      )
+        _dotfiles_plugins_tmp="${zsh_plugins}.zsh.tmp.$$"
+        if antidote bundle < "${zsh_plugins}.txt" > "$_dotfiles_plugins_tmp" && \
+                [ -s "$_dotfiles_plugins_tmp" ]; then
+            mv -f "$_dotfiles_plugins_tmp" "${zsh_plugins}.zsh"
+        else
+            rm -f "$_dotfiles_plugins_tmp"
+            print -u2 "Warning: Antidote could not refresh the plugin bundle; keeping the previous bundle."
+        fi
+        unset _dotfiles_plugins_tmp
     fi
-    source ${zsh_plugins}.zsh
+    [ -s "${zsh_plugins}.zsh" ] && source "${zsh_plugins}.zsh"
+    unset zsh_plugins
 fi
 
 # Add fzf if it exists and set catppuccin theme
 if command -v fzf &> /dev/null; then
-    source <(fzf --zsh)
+    if _dotfiles_fzf_init="$(fzf --zsh 2>/dev/null)"; then
+        eval "$_dotfiles_fzf_init"
+    else
+        [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ] && \
+            source /usr/share/doc/fzf/examples/key-bindings.zsh
+        [ -f /usr/share/doc/fzf/examples/completion.zsh ] && \
+            source /usr/share/doc/fzf/examples/completion.zsh
+    fi
+    unset _dotfiles_fzf_init
     export FZF_DEFAULT_OPTS=" \
     --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
     --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \

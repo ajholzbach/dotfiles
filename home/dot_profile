@@ -1,14 +1,52 @@
-if [ -d "$HOME/.local/bin" ]; then
-    case ":$PATH:" in
-        *":$HOME/.local/bin:"*) ;;
-        *) export PATH="$HOME/.local/bin:$PATH" ;;
-    esac
-fi
-
 if [ -z "${XDG_CONFIG_HOME:-}" ]; then
     export XDG_CONFIG_HOME="$HOME/.config"
 fi
 
-export CONDA_AUTO_ACTIVATE_BASE=false
-export EDITOR=vim
-export VISUAL=vim
+# These files are managed at fixed ~/.config paths. Respect explicit
+# overrides while keeping them discoverable when XDG_CONFIG_HOME is custom.
+export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$HOME/.config/starship.toml}"
+export BAT_CONFIG_PATH="${BAT_CONFIG_PATH:-$HOME/.config/bat/config}"
+
+for user_bin in "$HOME/.local/bin" "$HOME/bin"; do
+    [ -d "$user_bin" ] || continue
+    case ":${PATH:-}:" in
+        *":$user_bin:"*) ;;
+        *) PATH="$user_bin${PATH:+:$PATH}" ;;
+    esac
+done
+unset user_bin
+export PATH
+
+# Discover Homebrew without installing it or assuming a particular platform.
+for brew_bin in \
+    /opt/homebrew/bin/brew \
+    /usr/local/bin/brew \
+    /home/linuxbrew/.linuxbrew/bin/brew; do
+    if [ -x "$brew_bin" ]; then
+        if brew_environment="$("$brew_bin" shellenv 2>/dev/null)"; then
+            eval "$brew_environment"
+            export HOMEBREW_DOWNLOAD_CONCURRENCY="${HOMEBREW_DOWNLOAD_CONCURRENCY:-auto}"
+            unset brew_environment
+            break
+        fi
+        unset brew_environment
+    fi
+done
+unset brew_bin
+
+export CONDA_AUTO_ACTIVATE_BASE="${CONDA_AUTO_ACTIVATE_BASE:-false}"
+
+if [ -z "${EDITOR:-}" ]; then
+    if command -v vim >/dev/null 2>&1; then
+        EDITOR=vim
+    elif command -v vi >/dev/null 2>&1; then
+        EDITOR=vi
+    elif command -v nano >/dev/null 2>&1; then
+        EDITOR=nano
+    fi
+fi
+
+if [ -n "${EDITOR:-}" ]; then
+    export EDITOR
+    export VISUAL="${VISUAL:-$EDITOR}"
+fi

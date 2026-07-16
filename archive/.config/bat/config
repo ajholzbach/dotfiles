@@ -1,8 +1,0 @@
-# Disable paging
---paging=never
-
-# Always colorize output
---color=always
-
-# Set the syntax highlighting theme
---theme="Catppuccin Mocha"

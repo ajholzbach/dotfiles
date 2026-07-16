@@ -1,7 +1,0 @@
-pip_interop_enabled: true
-channels:
-  - pytorch
-  - conda-forge
-  - nodefaults
-channel_priority: flexible
-solver: libmamba

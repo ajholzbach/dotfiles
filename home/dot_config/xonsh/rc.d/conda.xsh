@@ -22,7 +22,9 @@ def _find_conda():
     if sys.platform == 'darwin':
         candidates += [
             '/opt/homebrew/Caskroom/miniforge/base',
+            '/opt/homebrew/Caskroom/miniconda/base',
             '/usr/local/Caskroom/miniforge/base',
+            '/usr/local/Caskroom/miniconda/base',
         ]
     candidates += [
         os.path.expanduser('~/miniforge3'),
@@ -75,19 +77,37 @@ def _build_conda_integration(conda_root, conda_bin):
     def lazy_conda(args):
         del aliases['conda']
         try:
-            hook = $(@(conda_bin) shell.xonsh hook)
-        except subprocess.CalledProcessError:
+            result = subprocess.run(
+                [conda_bin, 'shell.xonsh', 'hook'],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except OSError:
+            aliases['conda'] = lazy_conda
             return 1
+        if result.returncode != 0 or not result.stdout.strip():
+            aliases['conda'] = lazy_conda
+            return result.returncode or 1
+        hook = result.stdout
         # Strip the trailing `conda activate 'base'`. Inside this function's
         # scope, the `$CONDA_EXE = ...` lines earlier in the hook don't reach
         # the activate call in time and conda errors out
         lines = hook.strip().splitlines()
         if lines and lines[-1].strip().startswith('conda activate'):
             lines = lines[:-1]
-        execx('\n'.join(lines))
+        try:
+            execx('\n'.join(lines))
+        except Exception:
+            aliases['conda'] = lazy_conda
+            return 1
         # The hook installed its own broken completer; restore ours
         register_completer()
-        return aliases['conda'](args)
+        real_conda = aliases.get('conda')
+        if real_conda is None or real_conda is lazy_conda:
+            aliases['conda'] = lazy_conda
+            return 1
+        return real_conda(args)
 
     return register_completer, lazy_conda
 
