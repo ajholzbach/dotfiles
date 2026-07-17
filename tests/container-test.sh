@@ -154,7 +154,14 @@ original_ignore_mode="$(stat -c '%a' "$HOME/.config/git/ignore")"
 
 log "Running the documented init-and-apply path..."
 apply_output=''
-if apply_output="$(chezmoi --use-builtin-git=true init --apply file:///dotfiles 2>&1)"; then
+chezmoi_executable="$(command -v chezmoi)"
+if env PATH="$system_path" sh -c 'command -v chezmoi' >/dev/null 2>&1; then
+    fail "Bootstrap regression PATH unexpectedly contains chezmoi"
+else
+    ok "Bootstrap regression PATH excludes the freshly installed chezmoi"
+fi
+if apply_output="$(env PATH="$system_path" "$chezmoi_executable" \
+        --use-builtin-git=true init --apply file:///dotfiles 2>&1)"; then
     apply_status=0
 else
     apply_status=$?
@@ -165,7 +172,7 @@ if [ "$apply_status" -ne 0 ]; then
     fail "chezmoi init --apply failed (exit $apply_status)"
     print_summary_and_exit
 fi
-ok "chezmoi init --apply succeeded"
+ok "chezmoi init --apply succeeded with its install directory absent from PATH"
 
 state_root="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
 assert_nonempty_file "$state_root/current-backup" \

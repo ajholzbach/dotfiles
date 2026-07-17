@@ -6,6 +6,7 @@ umask 077
 
 STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
 CURRENT_BACKUP="$STATE_ROOT/current-backup"
+CHEZMOI_EXECUTABLE={{ .chezmoi.executable | quote }}
 
 die() {
     printf 'Error: %s\n' "$*" >&2
@@ -21,14 +22,14 @@ validate_relative_path() {
 }
 
 write_managed_list() {
-    chezmoi managed \
+    "$CHEZMOI_EXECUTABLE" managed \
         --include=files,symlinks \
         --path-style=relative > "$1"
     [ -s "$1" ] || die "chezmoi returned an empty managed-file list; refusing to apply without a restore manifest."
 }
 
-command -v chezmoi >/dev/null 2>&1 || \
-    die "chezmoi is required to create the pre-install restore point."
+[ -n "$CHEZMOI_EXECUTABLE" ] && [ -x "$CHEZMOI_EXECUTABLE" ] || \
+    die "the running chezmoi executable is unavailable; cannot create the pre-install restore point."
 
 # Keep a union of every path this repository has managed. This script runs
 # before every apply so a path introduced by a later repository update is

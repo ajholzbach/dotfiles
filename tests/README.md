@@ -38,7 +38,7 @@ The PowerShell image is deterministic compatibility coverage for Windows scripts
 Each Linux integration container:
 
 1. Starts with pre-existing `.bashrc`, `.profile`, Git ignore, and symlink fixtures.
-2. Runs the documented `chezmoi init --apply file:///dotfiles` flow as an unprivileged user.
+2. Runs `chezmoi init --apply file:///dotfiles` as an unprivileged user, invoking the freshly installed executable by absolute path while its install directory is absent from `PATH`. This mirrors the boundary used by the documented one-line installer.
 3. Verifies the restore-point manifests before checking managed output.
 4. Verifies a working Starship installation and ownership tracking.
 5. Starts every optional shell/tool available in that image without installing plugins automatically.
