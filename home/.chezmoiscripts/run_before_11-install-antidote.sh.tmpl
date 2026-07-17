@@ -1,0 +1,114 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/usr/bin/env sh
+set -eu
+
+umask 077
+
+ANTIDOTE_URL="https://github.com/mattmc3/antidote.git"
+ANTIDOTE_PATH="$HOME/.antidote"
+STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
+INSTALL_MARKER="$STATE_ROOT/antidote-installed-by-dotfiles"
+
+die() {
+    printf 'Error: %s\n' "$*" >&2
+    exit 1
+}
+
+validate_antidote() {
+    [ -d "$1" ] && [ ! -L "$1" ] && \
+        [ -f "$1/antidote.zsh" ] && [ ! -L "$1/antidote.zsh" ] && \
+        ANTIDOTE_VALIDATION_FILE="$1/antidote.zsh" zsh -f -c '
+            source "$ANTIDOTE_VALIDATION_FILE" &&
+                (( $+functions[antidote] ))
+        ' >/dev/null 2>&1
+}
+
+validate_marker() {
+    [ -f "$INSTALL_MARKER" ] && [ ! -L "$INSTALL_MARKER" ] && \
+        [ "$(wc -l < "$INSTALL_MARKER" | tr -d '[:space:]')" = "2" ] || \
+        return 1
+
+    marker_path="$(sed -n '1p' "$INSTALL_MARKER")"
+    marker_commit="$(sed -n '2p' "$INSTALL_MARKER")"
+    [ "$marker_path" = "$ANTIDOTE_PATH" ] && \
+        printf '%s\n' "$marker_commit" | grep -Eq '^[0-9a-f]{40,64}$'
+}
+
+if ! command -v zsh >/dev/null 2>&1; then
+    printf 'Zsh is not installed; skipping Antidote installation.\n'
+    exit 0
+fi
+
+if [ -e "$ANTIDOTE_PATH" ] || [ -L "$ANTIDOTE_PATH" ]; then
+    validate_antidote "$ANTIDOTE_PATH" || \
+        die "refusing to replace a non-working Antidote path at $ANTIDOTE_PATH."
+
+    if [ -e "$INSTALL_MARKER" ] || [ -L "$INSTALL_MARKER" ]; then
+        command -v git >/dev/null 2>&1 || \
+            die "git is required to validate the installer-owned Antidote checkout."
+        validate_marker || die "the Antidote ownership marker is invalid."
+        current_commit="$(git -C "$ANTIDOTE_PATH" rev-parse --verify HEAD 2>/dev/null)" || \
+            die "the installer-owned Antidote checkout has no valid Git commit."
+        if [ "$current_commit" != "$marker_commit" ]; then
+            printf 'Antidote was updated after installation; preserving the current checkout.\n'
+            exit 0
+        fi
+    fi
+
+    printf 'Antidote is already installed at %s.\n' "$ANTIDOTE_PATH"
+    exit 0
+fi
+
+if ! command -v git >/dev/null 2>&1; then
+    die "git is required to install Antidote when Zsh is installed."
+fi
+
+if [ -e "$INSTALL_MARKER" ] || [ -L "$INSTALL_MARKER" ]; then
+    validate_marker || die "the Antidote ownership marker is invalid."
+    rm -f "$INSTALL_MARKER"
+fi
+
+staging="$HOME/.antidote.tmp.$$"
+marker_tmp="$STATE_ROOT/.antidote-installed-by-dotfiles.$$"
+antidote_moved=0
+install_succeeded=0
+
+# Refuse collisions before installing a cleanup trap. A pre-existing path does
+# not belong to this invocation and must never be removed by its cleanup.
+[ ! -e "$staging" ] && [ ! -L "$staging" ] || \
+    die "temporary Antidote path already exists: $staging"
+[ ! -e "$marker_tmp" ] && [ ! -L "$marker_tmp" ] || \
+    die "temporary Antidote marker already exists: $marker_tmp"
+
+cleanup() {
+    rm -rf "$staging"
+    rm -f "$marker_tmp"
+    if [ "$antidote_moved" -eq 1 ] && [ "$install_succeeded" -ne 1 ]; then
+        rm -rf "$ANTIDOTE_PATH"
+    fi
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+
+printf 'Installing the latest Antidote checkout for Zsh...\n'
+git clone --depth=1 "$ANTIDOTE_URL" "$staging"
+validate_antidote "$staging" || \
+    die "the downloaded Antidote checkout failed validation."
+
+antidote_commit="$(git -C "$staging" rev-parse --verify HEAD 2>/dev/null)" || \
+    die "the downloaded Antidote checkout has no valid Git commit."
+printf '%s\n' "$antidote_commit" | grep -Eq '^[0-9a-f]{40,64}$' || \
+    die "the downloaded Antidote checkout reported an invalid Git commit."
+
+mv "$staging" "$ANTIDOTE_PATH"
+antidote_moved=1
+
+mkdir -p "$STATE_ROOT"
+if [ -d "$INSTALL_MARKER" ] && [ ! -L "$INSTALL_MARKER" ]; then
+    die "Antidote ownership marker path is a directory: $INSTALL_MARKER"
+fi
+printf '%s\n%s\n' "$ANTIDOTE_PATH" "$antidote_commit" > "$marker_tmp"
+mv "$marker_tmp" "$INSTALL_MARKER"
+
+install_succeeded=1
+{{- end }}

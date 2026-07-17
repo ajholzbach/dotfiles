@@ -17,7 +17,9 @@ ok "Running $TEST_MODE test on expected distro ($distro_id)"
 log "Checking template edge cases and installer safety guards..."
 for posix_template in \
         run_before_00-create-restore-point.sh.tmpl \
-        run_before_12-install-starship.sh.tmpl; do
+        run_before_11-install-antidote.sh.tmpl \
+        run_before_12-install-starship.sh.tmpl \
+        run_after_20-save-fish-theme.sh.tmpl; do
     for template_os in linux darwin; do
         rendered_script="$(mktemp)"
         if chezmoi execute-template \
@@ -55,6 +57,16 @@ chezmoi execute-template --override-data '{"chezmoi":{"os":"linux"}}' \
     --file /dotfiles/home/.chezmoiscripts/run_before_12-install-starship.sh.tmpl \
     > "$starship_installer_test"
 
+antidote_installer_test="$(mktemp)"
+chezmoi execute-template --override-data '{"chezmoi":{"os":"linux"}}' \
+    --file /dotfiles/home/.chezmoiscripts/run_before_11-install-antidote.sh.tmpl \
+    > "$antidote_installer_test"
+
+fish_theme_installer_test="$(mktemp)"
+chezmoi execute-template --override-data '{"chezmoi":{"os":"linux"}}' \
+    --file /dotfiles/home/.chezmoiscripts/run_after_20-save-fish-theme.sh.tmpl \
+    > "$fish_theme_installer_test"
+
 if grep -Fq 'INSTALLER_URL="https://starship.rs/install.sh"' \
         "$starship_installer_test" && \
         ! grep -Fq 'STARSHIP_VERSION=' "$starship_installer_test" && \
@@ -64,6 +76,16 @@ if grep -Fq 'INSTALLER_URL="https://starship.rs/install.sh"' \
     ok "Starship installer uses the unconstrained official latest-stable path"
 else
     fail "Starship installer is pinned or does not use the official install endpoint"
+fi
+
+if grep -Fq 'ANTIDOTE_URL="https://github.com/mattmc3/antidote.git"' \
+        "$antidote_installer_test" && \
+        grep -Fq 'git clone --depth=1 "$ANTIDOTE_URL" "$staging"' \
+            "$antidote_installer_test" && \
+        ! grep -Eq 'ANTIDOTE_(VERSION|TAG)=' "$antidote_installer_test"; then
+    ok "Antidote installer clones the unconstrained latest official checkout"
+else
+    fail "Antidote installer is pinned or does not use the official repository"
 fi
 
 installer_fixture="$(mktemp -d)"
@@ -133,7 +155,99 @@ if env HOME="$invalid_marker_home" XDG_STATE_HOME="$invalid_marker_state" \
 else
     fail "Uninstall trusted an incomplete Starship ownership marker"
 fi
-rm -rf "$installer_fixture" "$starship_installer_test"
+
+if [ "$TEST_MODE" != "minimal" ]; then
+    user_antidote_home="$installer_fixture/user-antidote-home"
+    user_antidote_state="$installer_fixture/user-antidote-state"
+    mkdir -p "$user_antidote_home/.antidote"
+    printf '%s\n' 'antidote() { :; }' \
+        > "$user_antidote_home/.antidote/antidote.zsh"
+    user_antidote_sha="$(sha256sum \
+        "$user_antidote_home/.antidote/antidote.zsh" | awk '{print $1}')"
+    if env HOME="$user_antidote_home" XDG_STATE_HOME="$user_antidote_state" \
+            PATH="$system_path" sh "$antidote_installer_test" >/dev/null 2>&1 && \
+            [ "$user_antidote_sha" = "$(sha256sum \
+                "$user_antidote_home/.antidote/antidote.zsh" | awk '{print $1}')" ] && \
+            [ ! -e "$user_antidote_state/dotfiles/antidote-installed-by-dotfiles" ]; then
+        ok "Antidote installer preserves a valid user-owned installation"
+    else
+        fail "Antidote installer overwrote or claimed a user-owned installation"
+    fi
+
+    no_git_bin="$installer_fixture/no-git-bin"
+    mkdir -p "$no_git_bin"
+    ln -s "$(command -v zsh)" "$no_git_bin/zsh"
+    if env HOME="$user_antidote_home" XDG_STATE_HOME="$user_antidote_state" \
+            PATH="$no_git_bin" /bin/sh "$antidote_installer_test" \
+            >/dev/null 2>&1; then
+        ok "A valid user-owned Antidote installation does not require Git"
+    else
+        fail "Antidote installer required Git for a user-owned installation"
+    fi
+
+    no_git_home="$installer_fixture/no-git-home"
+    mkdir -p "$no_git_home"
+    if env HOME="$no_git_home" XDG_STATE_HOME="$installer_fixture/no-git-state" \
+            PATH="$no_git_bin" /bin/sh "$antidote_installer_test" \
+            >/dev/null 2>&1; then
+        fail "Antidote installer silently skipped a fresh install without Git"
+    elif [ ! -e "$no_git_home/.antidote" ] && \
+            [ ! -e "$installer_fixture/no-git-state/dotfiles/antidote-installed-by-dotfiles" ]; then
+        ok "Fresh Antidote installation fails safely when Git is unavailable"
+    else
+        fail "Antidote installer left partial state after a missing-Git failure"
+    fi
+
+    collision_home="$installer_fixture/antidote-collision-home"
+    mkdir -p "$collision_home"
+    if env HOME="$collision_home" \
+            XDG_STATE_HOME="$installer_fixture/antidote-collision-state" \
+            PATH="$system_path" /bin/sh -c '
+                collision="$HOME/.antidote.tmp.$$"
+                mkdir -p "$collision"
+                printf "%s\n" preserve-me > "$collision/sentinel"
+                . "$1"
+            ' antidote-collision "$antidote_installer_test" >/dev/null 2>&1; then
+        fail "Antidote installer accepted a colliding temporary path"
+    elif collision_sentinel="$(find "$collision_home" \
+            -path "$collision_home/.antidote.tmp.*/sentinel" \
+            -type f -print -quit)" && \
+            [ -n "$collision_sentinel" ] && \
+            grep -Fqx 'preserve-me' "$collision_sentinel"; then
+        ok "Antidote installer preserves a colliding temporary path"
+    else
+        fail "Antidote installer deleted a colliding temporary path"
+    fi
+
+    invalid_antidote_home="$installer_fixture/invalid-antidote-home"
+    mkdir -p "$invalid_antidote_home/.antidote"
+    printf '%s\n' '# does not define the Antidote function' \
+        > "$invalid_antidote_home/.antidote/antidote.zsh"
+    if env HOME="$invalid_antidote_home" \
+            XDG_STATE_HOME="$installer_fixture/invalid-antidote-state" \
+            PATH="$system_path" sh "$antidote_installer_test" >/dev/null 2>&1; then
+        fail "Antidote installer accepted a non-working existing checkout"
+    elif grep -Fq 'does not define the Antidote function' \
+            "$invalid_antidote_home/.antidote/antidote.zsh"; then
+        ok "Antidote installer rejects and preserves a non-working checkout"
+    else
+        fail "Antidote installer changed a non-working existing checkout"
+    fi
+
+    missing_theme_home="$installer_fixture/missing-theme-home"
+    mkdir -p "$missing_theme_home"
+    if env HOME="$missing_theme_home" \
+            XDG_STATE_HOME="$installer_fixture/missing-theme-state" \
+            PATH="$system_path" sh "$fish_theme_installer_test" >/dev/null 2>&1; then
+        fail "Fish theme script accepted a missing managed theme"
+    elif [ ! -e "$installer_fixture/missing-theme-state/dotfiles/fish-theme-applied-by-dotfiles" ]; then
+        ok "Fish theme script fails safely when its managed theme is missing"
+    else
+        fail "Fish theme script recorded ownership after a failed save"
+    fi
+fi
+rm -rf "$installer_fixture" "$starship_installer_test" \
+    "$antidote_installer_test" "$fish_theme_installer_test"
 
 log "Preparing pre-install fixtures..."
 custom_xdg="$HOME/custom-xdg"
@@ -144,6 +258,27 @@ printf '%s\n' '# original global ignore' > "$HOME/.config/git/ignore"
 chmod 0640 "$HOME/.bashrc"
 chmod 0600 "$HOME/.profile"
 ln -snf .bashrc "$HOME/.zprofile"
+
+if [ "$TEST_MODE" != "minimal" ]; then
+    XDG_CONFIG_HOME="$HOME/.config" fish -c '
+        set -U fish_color_command 13579b
+        set -eU fish_color_param
+        set -U fish_color_custom_extra original-extra
+        set -U dotfiles_theme_sentinel keep-me
+        exit 0
+    '
+    frozen_fish_theme="$HOME/.config/fish/conf.d/fish_frozen_theme.fish"
+    mkdir -p "$(dirname "$frozen_fish_theme")"
+    printf '%s\n' \
+        '# This file was created by fish when upgrading to version 4.3, to migrate' \
+        '# a pre-existing universal theme to global variables.' \
+        'set --global fish_color_command badbad' \
+        'set --global fish_color_autosuggestion aaaaaa' \
+        > "$frozen_fish_theme"
+    chmod 0640 "$frozen_fish_theme"
+    original_frozen_fish_sha="$(sha256sum "$frozen_fish_theme" | awk '{print $1}')"
+    original_frozen_fish_mode="$(stat -c '%a' "$frozen_fish_theme")"
+fi
 
 original_bash_sha="$(sha256sum "$HOME/.bashrc" | awk '{print $1}')"
 original_profile_sha="$(sha256sum "$HOME/.profile" | awk '{print $1}')"
@@ -252,6 +387,19 @@ if [ "$TEST_MODE" = "minimal" ]; then
             ok "Minimal install does not require or install $optional_command"
         fi
     done
+
+    assert_absent "$HOME/.antidote" \
+        "Minimal install skips Antidote when Zsh is absent" \
+        "Minimal install created Antidote without Zsh"
+    assert_absent "$state_root/antidote-installed-by-dotfiles" \
+        "Minimal install records no Antidote ownership" \
+        "Minimal install recorded unexpected Antidote ownership"
+    assert_absent "$state_root/fish-theme-applied-by-dotfiles" \
+        "Minimal install skips Fish theme persistence when Fish is absent" \
+        "Minimal install recorded unexpected Fish theme ownership"
+    assert_absent "$HOME/.config/fish/fish_variables" \
+        "Minimal install creates no Fish universal-variable state" \
+        "Minimal install created Fish universal-variable state"
 else
     for covered_command in fzf zoxide; do
         if command -v "$covered_command" >/dev/null 2>&1; then
@@ -261,11 +409,84 @@ else
         fi
     done
 
-    if zsh -n "$HOME/.zshrc" && zsh -ic 'exit' >/dev/null 2>&1; then
-        ok "Zsh configuration parses and starts"
+    assert_nonempty_file "$HOME/.antidote/antidote.zsh" \
+        "Latest Antidote checkout installed when Zsh is present" \
+        "Automatic Antidote installation is missing"
+    assert_nonempty_file "$state_root/antidote-installed-by-dotfiles" \
+        "Antidote ownership marker recorded" \
+        "Antidote ownership marker missing"
+
+    antidote_marker_path="$(sed -n '1p' \
+        "$state_root/antidote-installed-by-dotfiles")"
+    antidote_marker_commit="$(sed -n '2p' \
+        "$state_root/antidote-installed-by-dotfiles")"
+    if [ "$antidote_marker_path" = "$HOME/.antidote" ] && \
+            [ "$antidote_marker_commit" = "$(git -C "$HOME/.antidote" rev-parse HEAD)" ] && \
+            [ "$(git -C "$HOME/.antidote" config --get remote.origin.url)" = \
+                'https://github.com/mattmc3/antidote.git' ]; then
+        ok "Antidote ownership marker identifies the official installed checkout"
+    else
+        fail "Antidote ownership marker is incomplete or stale"
+    fi
+
+    assert_nonempty_file "$state_root/fish-theme-applied-by-dotfiles" \
+        "Managed Fish theme ownership marker recorded" \
+        "Managed Fish theme ownership marker missing"
+    assert_nonempty_file "$state_root/fish-theme-restore.fish" \
+        "Pre-theme Fish color variables recorded for uninstall" \
+        "Pre-theme Fish color restoration state missing"
+    assert_nonempty_file "$state_root/fish-frozen-theme-restore.fish" \
+        "Fish frozen-theme migration file recorded for uninstall" \
+        "Fish frozen-theme restoration state missing"
+    assert_absent "$frozen_fish_theme" \
+        "Conflicting Fish frozen-theme migration file removed" \
+        "Fish frozen-theme migration file still shadows the managed theme"
+
+    if grep -Fq 'set -U -- fish_color_custom_extra original-extra' \
+            "$state_root/fish-theme-restore.fish"; then
+        ok "Fish rollback captures custom universal color variables"
+    else
+        fail "Fish rollback missed a custom universal color variable"
+    fi
+
+    if XDG_CONFIG_HOME="$HOME/.config" fish -c '
+            set -qU fish_color_command
+            and test "$fish_color_command" = 89b4fa
+            and set -qU fish_color_autosuggestion
+            and test "$fish_color_autosuggestion" = 6c7086
+            and test "$dotfiles_theme_sentinel" = keep-me
+        ' >/dev/null 2>&1; then
+        ok "Catppuccin Mocha is persisted without changing unrelated Fish state"
+    else
+        fail "Catppuccin Mocha was not persisted as Fish universal variables"
+    fi
+
+    if zsh -n "$HOME/.zshrc" && \
+            zsh -ic 'whence -w compdef >/dev/null' >/dev/null 2>&1; then
+        ok "Zsh configuration parses, starts, and initializes completion"
     else
         fail "Zsh configuration failed"
     fi
+
+    zsh_bundle="$HOME/.cache/antidote/zsh_plugins.zsh"
+    if [ -s "$zsh_bundle" ] && \
+            grep -Fq 'zsh-syntax-highlighting' "$zsh_bundle" && \
+            grep -Fq 'zsh-autosuggestions' "$zsh_bundle"; then
+        ok "Antidote generated syntax-highlighting and autosuggestion plugins"
+    else
+        fail "Antidote did not generate the configured Zsh plugin bundle"
+    fi
+    if zsh -ic '
+            typeset -f _zsh_highlight >/dev/null &&
+                typeset -f _zsh_autosuggest_start >/dev/null
+        ' >/dev/null 2>&1; then
+        ok "Zsh syntax highlighting and autosuggestions load at startup"
+    else
+        fail "Configured Zsh interaction plugins are not active after startup"
+    fi
+    assert_absent "$HOME/.zsh_plugins.zsh" \
+        "Generated Zsh plugin bundle stays in the cache" \
+        "Generated Zsh plugin bundle leaked into the home directory"
 
     if env -i HOME="$HOME" USER="${USER:-testuser}" PATH="$system_path" \
             XDG_CONFIG_HOME="$custom_xdg" zsh -lc \
@@ -365,6 +586,22 @@ else
     fi
 fi
 
+if [ "$TEST_MODE" != "minimal" ]; then
+    antidote_commit_before_reapply="$(git -C "$HOME/.antidote" rev-parse HEAD)"
+    antidote_marker_sha_before_reapply="$(sha256sum \
+        "$state_root/antidote-installed-by-dotfiles" | awk '{print $1}')"
+    fish_restore_sha_before_reapply="$(sha256sum \
+        "$state_root/fish-theme-restore.fish" | awk '{print $1}')"
+    fish_marker_sha_before_reapply="$(sha256sum \
+        "$state_root/fish-theme-applied-by-dotfiles" | awk '{print $1}')"
+    frozen_restore_sha_before_reapply="$(sha256sum \
+        "$state_root/fish-frozen-theme-restore.fish" | awk '{print $1}')"
+    XDG_CONFIG_HOME="$HOME/.config" fish -c '
+        set -U fish_color_command abcdef
+        exit 0
+    '
+fi
+
 restore_id_before="$(sed -n '1p' "$state_root/current-backup")"
 source_dir="$(chezmoi source-path)"
 printf '%s\n' 'original later-managed file' > "$HOME/.rollback_reconcile_fixture"
@@ -383,6 +620,32 @@ fi
 assert_equal "$restore_id_before" "$(sed -n '1p' "$state_root/current-backup")" \
     "Second apply preserved the original restore point" \
     "Second apply replaced the original restore point"
+
+if [ "$TEST_MODE" != "minimal" ]; then
+    if [ "$antidote_commit_before_reapply" = \
+            "$(git -C "$HOME/.antidote" rev-parse HEAD)" ] && \
+            [ "$antidote_marker_sha_before_reapply" = "$(sha256sum \
+                "$state_root/antidote-installed-by-dotfiles" | awk '{print $1}')" ]; then
+        ok "Second apply leaves the current Antidote checkout unchanged"
+    else
+        fail "Second apply changed Antidote or its ownership marker"
+    fi
+
+    if [ "$fish_restore_sha_before_reapply" = "$(sha256sum \
+            "$state_root/fish-theme-restore.fish" | awk '{print $1}')" ] && \
+            [ "$fish_marker_sha_before_reapply" = "$(sha256sum \
+                "$state_root/fish-theme-applied-by-dotfiles" | awk '{print $1}')" ] && \
+            [ "$frozen_restore_sha_before_reapply" = "$(sha256sum \
+                "$state_root/fish-frozen-theme-restore.fish" | awk '{print $1}')" ] && \
+            XDG_CONFIG_HOME="$HOME/.config" fish -c '
+                test "$fish_color_command" = 89b4fa
+                and test "$fish_color_autosuggestion" = 6c7086
+            ' >/dev/null 2>&1; then
+        ok "Second apply repairs Fish theme drift without replacing restore state"
+    else
+        fail "Second apply did not repair Fish theme drift safely"
+    fi
+fi
 
 if grep -Fqx -e '.rollback_reconcile_fixture' "$backup_dir/managed-files.txt" && \
         grep -Fqx -e '.rollback_reconcile_fixture' "$backup_dir/existing-files.txt" && \
@@ -407,6 +670,25 @@ if sh /dotfiles/uninstall.sh --dry-run --yes >/dev/null 2>&1 && \
     ok "Uninstall dry run makes no changes"
 else
     fail "Uninstall dry run changed managed files"
+fi
+
+if [ "$TEST_MODE" != "minimal" ]; then
+    broken_fish_bin="$(mktemp -d)"
+    printf '%s\n' '#!/usr/bin/env sh' 'exit 127' > "$broken_fish_bin/fish"
+    chmod +x "$broken_fish_bin/fish"
+    if PATH="$broken_fish_bin:$PATH" \
+            sh /dotfiles/uninstall.sh --yes >/dev/null 2>&1; then
+        fail "Uninstall continued when Fish theme restoration was unavailable"
+    elif [ "$managed_bash_sha" = "$(sha256sum "$HOME/.bashrc" | awk '{print $1}')" ] && \
+            [ -s "$state_root/current-backup" ] && \
+            [ -s "$state_root/fish-theme-applied-by-dotfiles" ] && \
+            [ -s "$state_root/fish-theme-restore.fish" ] && \
+            [ -d "$HOME/.local/share/chezmoi" ]; then
+        ok "Uninstall stops safely when Fish theme restoration is unavailable"
+    else
+        fail "Failed Fish restoration consumed recoverable uninstall state"
+    fi
+    rm -rf "$broken_fish_bin"
 fi
 
 log "Restoring the pre-install state..."
@@ -456,6 +738,44 @@ assert_absent "$HOME/.local/bin/starship" \
 assert_absent "$state_root/starship-installed-by-dotfiles" \
     "Starship ownership marker removed" \
     "Starship ownership marker remains"
+assert_absent "$HOME/.antidote" \
+    "Installer-owned Antidote removed" \
+    "Installer-owned Antidote remains"
+assert_absent "$state_root/antidote-installed-by-dotfiles" \
+    "Antidote ownership marker removed" \
+    "Antidote ownership marker remains"
+assert_absent "$state_root/fish-theme-applied-by-dotfiles" \
+    "Fish theme ownership marker removed" \
+    "Fish theme ownership marker remains"
+assert_absent "$state_root/fish-theme-restore.fish" \
+    "Fish theme restoration state consumed" \
+    "Fish theme restoration state remains"
+assert_absent "$state_root/fish-frozen-theme-restore.fish" \
+    "Fish frozen-theme restoration state consumed" \
+    "Fish frozen-theme restoration state remains"
+
+if [ "$TEST_MODE" != "minimal" ]; then
+    if XDG_CONFIG_HOME="$HOME/.config" fish -c '
+            set -eg fish_color_command fish_color_param fish_color_custom_extra
+            set -qU fish_color_command
+            and test "$fish_color_command" = 13579b
+            and not set -qU fish_color_param
+            and test "$fish_color_custom_extra" = original-extra
+            and test "$dotfiles_theme_sentinel" = keep-me
+        ' >/dev/null 2>&1; then
+        ok "Uninstall restored prior Fish colors and preserved unrelated state"
+    else
+        fail "Uninstall did not restore the pre-install Fish color state"
+    fi
+
+    if [ "$original_frozen_fish_sha" = \
+            "$(sha256sum "$frozen_fish_theme" | awk '{print $1}')" ] && \
+            [ "$original_frozen_fish_mode" = "$(stat -c '%a' "$frozen_fish_theme")" ]; then
+        ok "Uninstall restored the prior Fish frozen-theme file exactly"
+    else
+        fail "Uninstall did not restore the prior Fish frozen-theme file"
+    fi
+fi
 assert_absent "$state_root/current-backup" \
     "Consumed restore-point pointer cleared for a future install" \
     "Consumed restore-point pointer remains"

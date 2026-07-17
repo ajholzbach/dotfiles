@@ -6,12 +6,12 @@ Personal dotfiles managed with [Chezmoi](https://github.com/twpayne/chezmoi). Th
 
 ## Status
 
-This repository is fully managed by Chezmoi. All active dotfiles are in `home/` and automatically applied to `$HOME`. Only the latest stable [Starship](https://starship.rs/) is installed automatically; Fish is recommended, and all other tools are optional.
+This repository is fully managed by Chezmoi. All active dotfiles are in `home/` and automatically applied to `$HOME`. The latest stable [Starship](https://starship.rs/) is installed automatically, as is [Antidote](https://github.com/mattmc3/antidote) when zsh is present; Fish is recommended, and all other tools are optional.
 
 ## Layout
 
 - `home/`: Source of truth for dotfiles used by Chezmoi (mirrors `$HOME` layout)
-- `home/.chezmoiscripts/`: Restore-point creation, Starship installation, and Windows PowerShell profile setup
+- `home/.chezmoiscripts/`: Restore-point creation, shell-tool setup, and Windows PowerShell profile setup
 - `tests/`: Docker-based test suites for minimal Ubuntu, Ubuntu, Arch, and rendered Windows PowerShell scripts
 - `assets/`: Screenshots and images for documentation
 - `uninstall.sh` / `uninstall.ps1`: Restore the pre-install state or preview that restoration
@@ -21,9 +21,9 @@ This repository is fully managed by Chezmoi. All active dotfiles are in `home/` 
 The `home/` directory contains the following dotfiles and configurations:
 
 ### Shell Configuration
-- **zsh**: Custom `.zshrc` with performance optimizations (lazy-loading for conda, nvm, pnpm), tool integrations, and Catppuccin theme support. Loads plugins via [Antidote](https://github.com/mattmc3/antidote) (`.zsh_plugins.txt`) when Antidote is installed.
+- **zsh**: Custom `.zshrc` with performance optimizations (lazy-loading for conda, nvm, pnpm), built-in completion, tool integrations, and Catppuccin theme support. [Antidote](https://github.com/mattmc3/antidote) is installed automatically when zsh is available and loads `.zsh_plugins.txt`.
 - **bash**: `.bashrc` sources `~/.profile`, the per-machine env file, and initializes Starship.
-- [**fish**](https://github.com/fish-shell/fish-shell): Full Fish configuration that works without plugins. The optional `fisher_setup` function installs [Fisher](https://github.com/jorgebucaran/fisher), syncs `dot_config/fish/fish_plugins`, and applies the Catppuccin Mocha theme when run explicitly.
+- [**fish**](https://github.com/fish-shell/fish-shell): Full Fish configuration that works without plugins. Catppuccin Mocha is saved automatically when Fish is available; the optional `fisher_setup` function syncs `dot_config/fish/fish_plugins` after [Fisher](https://github.com/jorgebucaran/fisher) is installed separately.
 - [**xonsh**](https://xon.sh/): Python-powered shell. `dot_config/xonsh/rc.xsh` mirrors the Fish setup, with a `tool-requirements.txt` for the uv-managed Python env and a `rc.d/` for drop-in scripts (`git-aliases.xsh`, lazy-loading `conda.xsh`). Xonsh itself is installed separately.
 - **PowerShell**: Shared Starship and optional-tool initialization in `~/.config/powershell/profile.ps1`, loaded from the standard PowerShell profile locations on Windows.
 - **shared `.profile`**: POSIX-clean env (XDG paths, PATH bootstrap, EDITOR, etc.) sourced by both Bash and zsh.
@@ -68,10 +68,13 @@ chezmoi init --apply ajholzbach
 This clones the repository as a Chezmoi source and immediately applies the files from `home/` into `$HOME`. The bootstrap scripts then:
 
 1. Create or update a pre-install restore point before any managed file changes.
-2. Install the latest stable Starship into a user-local directory when Starship is absent.
-3. On Windows, add a marked loader to the standard PowerShell profile files while preserving existing content.
+2. Install the latest Antidote checkout when zsh is present and Antidote is absent.
+3. Install the latest stable Starship into a user-local directory when Starship is absent.
+4. Save Catppuccin Mocha as Fish's theme when Fish is present.
+5. On Windows, add a marked loader to the standard PowerShell profile files while preserving existing content.
 
 The scripts do not use `sudo`, install a shell, change the login shell, or call an operating-system package manager.
+Git is required only when zsh is already installed and Antidote needs to be cloned.
 
 ### Arch and CachyOS
 
@@ -106,7 +109,7 @@ $uninstall = Join-Path (chezmoi source-path) 'uninstall.ps1'
 & $uninstall -Yes
 ```
 
-The uninstall helpers restore previous files, remove newly managed targets, and remove Starship only when it was installed by these dotfiles and is still unchanged. Add `--keep-chezmoi` or `-KeepChezmoi` to preserve the local Chezmoi source and metadata.
+The uninstall helpers restore previous files and Fish colors, remove newly managed targets, and remove unchanged Starship and Antidote installations owned by these dotfiles. Add `--keep-chezmoi` or `-KeepChezmoi` to preserve the local Chezmoi source and metadata.
 
 ## Recommended Packages
 

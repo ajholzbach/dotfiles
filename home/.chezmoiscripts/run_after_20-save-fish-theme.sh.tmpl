@@ -1,0 +1,245 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/usr/bin/env sh
+set -eu
+
+umask 077
+
+THEME_FILE="$HOME/.config/fish/themes/Catppuccin Mocha.theme"
+FROZEN_THEME_FILE="$HOME/.config/fish/conf.d/fish_frozen_theme.fish"
+STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
+INSTALL_MARKER="$STATE_ROOT/fish-theme-applied-by-dotfiles"
+RESTORE_SCRIPT="$STATE_ROOT/fish-theme-restore.fish"
+FROZEN_THEME_RESTORE="$STATE_ROOT/fish-frozen-theme-restore.fish"
+
+die() {
+    printf 'Error: %s\n' "$*" >&2
+    exit 1
+}
+
+sha256_file() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | sed 's/[[:space:]].*$//'
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$1" | sed 's/[[:space:]].*$//'
+    else
+        return 127
+    fi
+}
+
+run_fish() {
+    DOTFILES_LOADING_LOCAL_ENV=1 \
+        XDG_CONFIG_HOME="$HOME/.config" \
+        "$FISH_EXECUTABLE" "$@"
+}
+
+write_restore_script() {
+    destination="$1"
+    shift
+    {
+        printf '%s\n' '# dotfiles-fish-theme-restore-v1'
+        run_fish -c '
+            for variable_name in $argv
+                if not string match -rq "^fish_(pager_)?color_[A-Za-z0-9_]+\$" -- $variable_name
+                    exit 2
+                end
+                if set -qU $variable_name
+                    printf "set -U -- %s" (string escape -- $variable_name)
+                    for variable_value in $$variable_name
+                        printf " %s" (string escape -- $variable_value)
+                    end
+                    printf "\n"
+                else
+                    printf "set -eU -- %s\n" (string escape -- $variable_name)
+                end
+            end
+        ' "$@"
+        printf '%s\n' 'true'
+    } > "$destination"
+    "$FISH_EXECUTABLE" -n "$destination"
+}
+
+fish_theme_matches() {
+    run_fish -c '
+        while read -lat theme_tokens
+            set -q theme_tokens[1]; or continue
+            set -l variable_name $theme_tokens[1]
+            string match -rq "^fish_(pager_)?color_[A-Za-z0-9_]+\$" -- $variable_name
+            or exit 2
+            set -qU $variable_name; or exit 1
+            set -l expected_value (string join \x1e -- $theme_tokens[2..] | string collect)
+            set -l actual_value (string join \x1e -- $$variable_name | string collect)
+            test "$actual_value" = "$expected_value"; or exit 1
+        end < "$argv[1]"
+        exit 0
+    ' "$THEME_FILE" >/dev/null 2>&1
+}
+
+is_generated_frozen_theme() {
+    [ -f "$FROZEN_THEME_FILE" ] && [ ! -L "$FROZEN_THEME_FILE" ] && \
+        grep -Fqx \
+            '# This file was created by fish when upgrading to version 4.3, to migrate' \
+            "$FROZEN_THEME_FILE"
+}
+
+if ! command -v fish >/dev/null 2>&1; then
+    printf 'Fish is not installed; skipping Catppuccin theme persistence.\n'
+    exit 0
+fi
+FISH_EXECUTABLE="$(command -v fish)"
+
+[ -f "$THEME_FILE" ] && [ ! -L "$THEME_FILE" ] || \
+    die "the managed Fish theme is missing or unsafe: $THEME_FILE"
+
+theme_sha256="$(sha256_file "$THEME_FILE")" || \
+    die "sha256sum or shasum is required to track the managed Fish theme safely."
+printf '%s\n' "$theme_sha256" | grep -Eq '^[0-9a-f]{64}$' || \
+    die "the managed Fish theme produced an invalid checksum."
+
+theme_variables="$(awk '
+    $1 ~ /^fish_(pager_)?color_[A-Za-z0-9_]+$/ { print $1 }
+' "$THEME_FILE")"
+[ -n "$theme_variables" ] || die "the managed Fish theme contains no color variables."
+
+# The managed theme contains only comments, blank lines, and assignments. Fail
+# closed if that changes so restoration never silently misses a new construct.
+theme_assignment_count="$(awk '
+    /^[[:space:]]*($|#)/ { next }
+    { count++ }
+    END { print count + 0 }
+' "$THEME_FILE")"
+theme_variable_count="$(printf '%s\n' "$theme_variables" | wc -l | tr -d '[:space:]')"
+[ "$theme_assignment_count" = "$theme_variable_count" ] || \
+    die "the managed Fish theme contains an unsupported line."
+
+marker_exists=0
+recorded_frozen_state=''
+if [ -e "$INSTALL_MARKER" ] || [ -L "$INSTALL_MARKER" ]; then
+    [ -f "$INSTALL_MARKER" ] && [ ! -L "$INSTALL_MARKER" ] && \
+        [ "$(wc -l < "$INSTALL_MARKER" | tr -d '[:space:]')" = "3" ] || \
+        die "the Fish theme ownership marker is invalid."
+    recorded_theme_sha256="$(sed -n '1p' "$INSTALL_MARKER")"
+    recorded_restore_sha256="$(sed -n '2p' "$INSTALL_MARKER")"
+    recorded_frozen_state="$(sed -n '3p' "$INSTALL_MARKER")"
+    printf '%s\n' "$recorded_theme_sha256" | grep -Eq '^[0-9a-f]{64}$' && \
+        printf '%s\n' "$recorded_restore_sha256" | grep -Eq '^[0-9a-f]{64}$' || \
+        die "the Fish theme ownership marker is invalid."
+
+    [ -f "$RESTORE_SCRIPT" ] && [ ! -L "$RESTORE_SCRIPT" ] && \
+        [ "$recorded_restore_sha256" = "$(sha256_file "$RESTORE_SCRIPT")" ] || \
+        die "the Fish theme restore state is missing or changed."
+
+    case "$recorded_frozen_state" in
+        absent)
+            [ ! -e "$FROZEN_THEME_RESTORE" ] && [ ! -L "$FROZEN_THEME_RESTORE" ] || \
+                die "unexpected Fish frozen-theme restore state exists."
+            ;;
+        *)
+            printf '%s\n' "$recorded_frozen_state" | grep -Eq '^[0-9a-f]{64}$' && \
+                [ -f "$FROZEN_THEME_RESTORE" ] && [ ! -L "$FROZEN_THEME_RESTORE" ] && \
+                [ "$recorded_frozen_state" = \
+                    "$(sha256_file "$FROZEN_THEME_RESTORE")" ] || \
+                die "the Fish frozen-theme restore state is missing or changed."
+            ;;
+    esac
+
+    marker_exists=1
+    if [ "$recorded_theme_sha256" = "$theme_sha256" ] && \
+            [ ! -e "$FROZEN_THEME_FILE" ] && [ ! -L "$FROZEN_THEME_FILE" ] && \
+            fish_theme_matches; then
+        printf 'Catppuccin Mocha is already saved as the managed Fish theme.\n'
+        exit 0
+    fi
+elif [ -e "$RESTORE_SCRIPT" ] || [ -L "$RESTORE_SCRIPT" ] || \
+        [ -e "$FROZEN_THEME_RESTORE" ] || [ -L "$FROZEN_THEME_RESTORE" ]; then
+    die "Fish theme restore state exists without its ownership marker."
+fi
+
+mkdir -p "$STATE_ROOT"
+restore_tmp="$STATE_ROOT/.fish-theme-restore.$$"
+rollback_tmp="$STATE_ROOT/.fish-theme-rollback.$$"
+marker_tmp="$STATE_ROOT/.fish-theme-applied-by-dotfiles.$$"
+frozen_restore_tmp="$STATE_ROOT/.fish-frozen-theme-restore.$$"
+frozen_rollback_tmp="$STATE_ROOT/.fish-frozen-theme-rollback.$$"
+restore_created=0
+frozen_restore_created=0
+frozen_removed=0
+save_succeeded=0
+
+cleanup() {
+    if [ "$save_succeeded" -ne 1 ]; then
+        rollback_succeeded=0
+        if [ -f "$rollback_tmp" ] && \
+                run_fish -c 'source "$argv[1]"; or exit 1; exit 0' \
+                    "$rollback_tmp" >/dev/null 2>&1; then
+            rollback_succeeded=1
+        fi
+        if [ "$frozen_removed" -eq 1 ] && [ -f "$frozen_rollback_tmp" ]; then
+            mkdir -p "$(dirname "$FROZEN_THEME_FILE")"
+            cp -p "$frozen_rollback_tmp" "$FROZEN_THEME_FILE"
+        fi
+        if [ "$rollback_succeeded" -eq 1 ]; then
+            [ "$restore_created" -ne 1 ] || rm -f "$RESTORE_SCRIPT"
+            [ "$frozen_restore_created" -ne 1 ] || rm -f "$FROZEN_THEME_RESTORE"
+        fi
+    fi
+    rm -f "$restore_tmp" "$rollback_tmp" "$marker_tmp" \
+        "$frozen_restore_tmp" "$frozen_rollback_tmp"
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+
+fish_variable_names="$(run_fish -c '
+    fish_config theme list >/dev/null 2>&1; or exit 1
+    __fish_theme_variables
+    set --names --universal |
+        string match -r "^fish_(pager_)?color_[A-Za-z0-9_]+\$"
+    exit 0
+')" || die "Fish 3.4 or newer is required to persist the managed theme."
+
+restore_variables="$(printf '%s\n%s\n' \
+    "$theme_variables" "$fish_variable_names" | LC_ALL=C sort -u)"
+[ -n "$restore_variables" ] || die "Fish reported no restorable color variables."
+
+if [ -e "$FROZEN_THEME_FILE" ] || [ -L "$FROZEN_THEME_FILE" ]; then
+    is_generated_frozen_theme || \
+        die "refusing to replace an unrecognized path at $FROZEN_THEME_FILE."
+    cp -p "$FROZEN_THEME_FILE" "$frozen_rollback_tmp"
+    if [ "$marker_exists" -eq 0 ]; then
+        cp -p "$FROZEN_THEME_FILE" "$frozen_restore_tmp"
+        mv "$frozen_restore_tmp" "$FROZEN_THEME_RESTORE"
+        frozen_restore_created=1
+        recorded_frozen_state="$(sha256_file "$FROZEN_THEME_RESTORE")"
+    fi
+    rm -f "$FROZEN_THEME_FILE"
+    frozen_removed=1
+elif [ "$marker_exists" -eq 0 ]; then
+    recorded_frozen_state='absent'
+fi
+
+# Intentional splitting: every value was validated as a safe Fish variable name.
+# shellcheck disable=SC2086
+set -- $restore_variables
+write_restore_script "$rollback_tmp" "$@" || \
+    die "Fish could not capture the current color variables for rollback."
+if [ "$marker_exists" -eq 0 ]; then
+    cp -p "$rollback_tmp" "$restore_tmp"
+    mv "$restore_tmp" "$RESTORE_SCRIPT"
+    restore_created=1
+fi
+
+printf 'Saving Catppuccin Mocha as the Fish theme...\n'
+run_fish -c '
+    echo y | fish_config theme save "Catppuccin Mocha" >/dev/null
+    or exit 1
+    exit 0
+' || die "Fish could not persist the managed Catppuccin Mocha theme."
+fish_theme_matches || \
+    die "a fresh Fish process did not load the managed Catppuccin Mocha theme."
+
+restore_sha256="$(sha256_file "$RESTORE_SCRIPT")" || \
+    die "the Fish theme restore state could not be checksummed."
+printf '%s\n%s\n%s\n' \
+    "$theme_sha256" "$restore_sha256" "$recorded_frozen_state" > "$marker_tmp"
+mv "$marker_tmp" "$INSTALL_MARKER"
+save_succeeded=1
+{{- end }}

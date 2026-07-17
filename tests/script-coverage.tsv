@@ -1,6 +1,8 @@
 # Active chezmoi script template<TAB>Docker suites that exercise it
 home/.chezmoiscripts/run_before_00-create-restore-point.sh.tmpl	minimal,ubuntu,arch
+home/.chezmoiscripts/run_before_11-install-antidote.sh.tmpl	minimal,ubuntu,arch
 home/.chezmoiscripts/run_before_12-install-starship.sh.tmpl	minimal,ubuntu,arch
+home/.chezmoiscripts/run_after_20-save-fish-theme.sh.tmpl	minimal,ubuntu,arch
 home/.chezmoiscripts/run_before_00-create-restore-point-windows.ps1.tmpl	powershell
 home/.chezmoiscripts/run_before_12-install-starship-windows.ps1.tmpl	powershell
 home/.chezmoiscripts/run_after_25-install-powershell-profile-shims.ps1.tmpl	powershell

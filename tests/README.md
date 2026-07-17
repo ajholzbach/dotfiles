@@ -5,7 +5,7 @@ The local Docker suite is the required validation gate for this repository. It t
 ## Prerequisites
 
 - Docker with a running daemon
-- Network access while resolving the current chezmoi, Python, and Starship releases
+- Network access while resolving the current chezmoi, Python, Starship, Antidote, and zsh plugin releases
 - amd64 emulation for the Arch and PowerShell images when the host is ARM; Docker Desktop and OrbStack normally provide it
 
 ## Run
@@ -27,8 +27,8 @@ Running `./tests/test.sh` without a selector is equivalent to `all`.
 | Suite | Base | Purpose |
 |---|---|---|
 | `minimal` | Ubuntu 24.04 | Proves Bash plus Starship works without Fish, zsh, Xonsh, mise, bat, zoxide, fzf, tmux, Vim, or passwordless sudo |
-| `ubuntu` | Ubuntu 24.04 | Parses and starts the optional Bash/zsh/Fish/Xonsh setup and loads Vim/tmux configuration |
-| `arch` | Arch Linux | Exercises the same optional-tool path against rolling Arch userland and pacman package names |
+| `ubuntu` | Ubuntu 24.04 | Installs Antidote, persists the Fish theme, starts the optional shell setup, and loads Vim/tmux configuration |
+| `arch` | Arch Linux | Exercises the same optional-tool and shell-setup path against rolling Arch userland and pacman package names |
 | `powershell` | PowerShell on Ubuntu 24.04 | Renders Windows-only templates and tests them with isolated WinGet/Scoop mocks and Windows-like profile fixtures |
 
 The PowerShell image is deterministic compatibility coverage for Windows scripts. It does not claim to emulate the Windows kernel, registry, ACLs, path rules, or native package managers; a real Windows smoke test remains appropriate before a release that materially changes Windows behavior.
@@ -40,12 +40,12 @@ Each Linux integration container:
 1. Starts with pre-existing `.bashrc`, `.profile`, Git ignore, and symlink fixtures.
 2. Runs `chezmoi init --apply file:///dotfiles` as an unprivileged user, invoking the freshly installed executable by absolute path while its install directory is absent from `PATH`. This mirrors the boundary used by the documented one-line installer.
 3. Verifies the restore-point manifests before checking managed output.
-4. Verifies a working Starship installation and ownership tracking.
-5. Starts every optional shell/tool available in that image without installing plugins automatically.
+4. Verifies working Starship and conditional Antidote installations with ownership tracking.
+5. Verifies Fish theme persistence, then starts every optional shell/tool available in that image.
 6. Runs a second ordinary `chezmoi apply` with scripts enabled.
 7. Requires a clean managed-file diff after the second apply. Scripts are excluded only from this diff display because ordinary `run_` scripts are expected to appear as runnable every time; they are included in both actual applies.
 8. Runs uninstall first as a dry run and then for real.
-9. Verifies byte-for-byte content, mode, and symlink restoration; newly managed targets and installer-owned Starship must be gone.
+9. Verifies byte-for-byte content, mode, symlink, and Fish-color restoration; newly managed targets and installer-owned Starship and Antidote must be gone.
 
 The minimal image also asserts that the dotfiles neither require nor install optional tools.
 Git is present only because the isolated local repository uses a `file://` clone;
