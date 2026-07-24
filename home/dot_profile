@@ -6,6 +6,7 @@ fi
 # overrides while keeping them discoverable when XDG_CONFIG_HOME is custom.
 export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$HOME/.config/starship.toml}"
 export BAT_CONFIG_PATH="${BAT_CONFIG_PATH:-$HOME/.config/bat/config}"
+export COPYFILE_DISABLE="${COPYFILE_DISABLE:-1}"
 
 for user_bin in "$HOME/.local/bin" "$HOME/bin"; do
     [ -d "$user_bin" ] || continue

@@ -1,90 +1,101 @@
 # dotfiles
 
-Personal dotfiles managed with [Chezmoi](https://github.com/twpayne/chezmoi). The active, up-to-date configuration lives under `home/` and is applied to `$HOME` via Chezmoi.
+These are my shell and tool configurations. [chezmoi](https://www.chezmoi.io/) maps the files under `home/` into `$HOME` and keeps the source state in one repository.
 
-![Sample Command Line](assets/sample_command_line.png)
+![Sample command line](assets/sample_command_line.png)
 
-## Status
+## What this repository does
 
-This repository is fully managed by Chezmoi. All active dotfiles are in `home/` and automatically applied to `$HOME`. The latest stable [Starship](https://starship.rs/) is installed automatically, as is [Antidote](https://github.com/mattmc3/antidote) when zsh is present; Fish is recommended, and all other tools are optional.
+- Applies configuration for Bash, zsh, Fish, Xonsh, and PowerShell
+- Installs the latest stable [Starship](https://starship.rs/) when it is missing
+- Installs [Antidote](https://github.com/mattmc3/antidote) on Linux and macOS when zsh is present
+- Applies the included Catppuccin Mocha theme on Linux and macOS when Fish is present
+- Creates a restore point before changing managed files
+- Provides tested uninstall scripts for restoring the previous state
 
-## Layout
+Starship is the only program installed on every supported platform. On Linux and macOS it is installed in `~/.local/bin` without `sudo` or a package manager. On Windows its installer uses WinGet with Scoop as a fallback. The bootstrap does not install a shell, Fisher, or optional tools. It does not change the login shell.
 
-- `home/`: Source of truth for dotfiles used by Chezmoi (mirrors `$HOME` layout)
-- `home/.chezmoiscripts/`: Restore-point creation, shell-tool setup, and Windows PowerShell profile setup
-- `tests/`: Docker-based test suites for minimal Ubuntu, Ubuntu, Arch, and rendered Windows PowerShell scripts
-- `assets/`: Screenshots and images for documentation
-- `uninstall.sh` / `uninstall.ps1`: Restore the pre-install state or preview that restoration
+## Repository layout
 
-## What's Included
+- `home/` contains the files applied to `$HOME`
+- `home/.chezmoiscripts/` contains setup and restore-point scripts
+- `tests/` contains the Docker test suites
+- `assets/` contains README images
+- `uninstall.sh` and `uninstall.ps1` restore the pre-install state
 
-The `home/` directory contains the following dotfiles and configurations:
+Generated plugin files, shell history, installed programs, and machine-specific environment files are not tracked.
 
-### Shell Configuration
-- **zsh**: Custom `.zshrc` with performance optimizations (lazy-loading for conda, nvm, pnpm), built-in completion, tool integrations, and Catppuccin theme support. [Antidote](https://github.com/mattmc3/antidote) is installed automatically when zsh is available and loads `.zsh_plugins.txt`.
-- **bash**: `.bashrc` sources `~/.profile`, the per-machine env file, and initializes Starship.
-- [**fish**](https://github.com/fish-shell/fish-shell): Full Fish configuration that works without plugins. Catppuccin Mocha is saved automatically when Fish is available; the optional `fisher_setup` function syncs `dot_config/fish/fish_plugins` after [Fisher](https://github.com/jorgebucaran/fisher) is installed separately.
-- [**xonsh**](https://xon.sh/): Python-powered shell. `dot_config/xonsh/rc.xsh` mirrors the Fish setup, with a `tool-requirements.txt` for the uv-managed Python env and a `rc.d/` for drop-in scripts (`git-aliases.xsh`, lazy-loading `conda.xsh`). Xonsh itself is installed separately.
-- **PowerShell**: Shared Starship and optional-tool initialization in `~/.config/powershell/profile.ps1`, loaded from the standard PowerShell profile locations on Windows.
-- **shared `.profile`**: POSIX-clean env (XDG paths, PATH bootstrap, EDITOR, etc.) sourced by both Bash and zsh.
+## Managed configuration
 
-### Per-machine local env
-Any machine-specific exports (work tokens, internal credentials, per-host overrides) live in `~/.config/local-env.sh` (POSIX), `~/.config/local-env.fish` (Fish), or `~/.config/local-env.ps1` (PowerShell), **outside this repository**, mode 600 where supported. Each shell sources its matching file if present, so the same dotfiles work across machines without leaking machine-local values into git.
+### Shells
 
-### Development Tools
-- **git**: Global ignore patterns at `~/.config/git/ignore`.
-- **vim**: Custom `.vimrc` with Catppuccin Mocha colorscheme.
-- [**starship**](https://starship.rs/): Cross-shell prompt with custom symbols, OS detection, and a shared `starship.toml` in `dot_config/`. The latest stable release is installed automatically when Starship is not already available.
-- [**bat**](https://github.com/sharkdp/bat): Syntax highlighting configuration with Catppuccin Mocha theme.
-- [**zoxide**](https://github.com/ajeetdsouza/zoxide): Smart directory jumping when installed.
-- [**mise**](https://mise.jdx.dev/): Optional development environment manager integration in Bash, zsh, Fish, and Xonsh. No Chezmoi script requires mise. Shared settings live in `dot_config/mise/conf.d/00-baseline.toml`; per-machine `[tools]` belong in the intentionally unmanaged `~/.config/mise/config.toml`.
-- [**conda**](https://github.com/conda-forge/miniforge): Lazy-load setup for fast shell startup; Xonsh wraps `conda shell.xonsh hook` so a fresh shell does not pay the initialization cost until the first `conda` invocation.
-- [**fzf**](https://github.com/junegunn/fzf): Fuzzy finder integration when installed.
-- [**eza**](https://eza.rocks/): Guarded `ls`, `ll`, `la`, and `lt` aliases in Fish and zsh.
-- **Shell utilities**: Fish and zsh provide a resumable `wget` alias and the portable `psmem10` memory view.
+- **Bash** sources the shared `.profile`, local environment values, and guarded tool integrations.
+- **zsh** includes completion, history settings, lazy Conda and NVM loading, Antidote plugins, and guarded tool integrations.
+- **Fish** works without Fisher. Its optional aliases come from autoloaded plugin functions so they add no work to shell startup.
+- **Xonsh** includes guarded integrations, lazy Conda loading, and Git aliases.
+- **PowerShell** uses a shared profile loaded from the standard PowerShell profile locations on Windows.
+
+### Installation behavior
+
+- [Starship](https://starship.rs/) is installed automatically when missing because it provides the shared prompt.
+- [Antidote](https://github.com/mattmc3/antidote) is installed when zsh is already present on Linux or macOS.
+- The Fish theme is applied when Fish is already present on Linux or macOS.
+- All other tools are installed manually. Their configuration activates only when the corresponding program is available.
+
+### Optional integrations
+
+- [eza](https://eza.rocks/) backs the guarded `ls`, `ll`, `la`, and `lt` aliases in zsh and the Fish plugin.
+- [bat](https://github.com/sharkdp/bat) provides the configured `cat` alias and Catppuccin theme.
+- [zoxide](https://github.com/ajeetdsouza/zoxide) provides history-based directory navigation.
+- [fzf](https://github.com/junegunn/fzf) provides fuzzy completion and key bindings.
+- [mise](https://mise.jdx.dev/) activates development tools using the shared baseline configuration.
+- Conda loads only when first used to keep shell startup fast.
+- Vim, tmux, and btop have managed configuration but are not installed.
+- zsh provides a resumable `wget` alias, extension-aware `tarnow` and `untar` helpers, and portable `psmem` and `psmem10` memory views. The matching Fish functions come from [ajholzbach/fish](https://github.com/ajholzbach/fish).
+
+### Fish plugins
+
+Fish works without [Fisher](https://github.com/jorgebucaran/fisher). Neither Fisher nor its plugins are installed by the bootstrap. After Fisher is installed, `fisher_setup` syncs the tracked [`fish_plugins`](home/dot_config/fish/fish_plugins) list.
+
+I maintain all three tracked plugins:
+
+- [ajholzbach/fish](https://github.com/ajholzbach/fish) provides shared Fish functions and completions, including the eza, wget, tar, and memory helpers.
+- [ajholzbach/fish-git](https://github.com/ajholzbach/fish-git) provides lazy-loaded Git aliases.
+- [ajholzbach/fish-kubectl](https://github.com/ajholzbach/fish-kubectl) provides lazy-loaded kubectl aliases and completions.
 
 ### Applications
-- [**Ghostty**](https://ghostty.org/): Terminal emulator configuration (Catppuccin Mocha theme, MesloLGS Nerd Font, `display-p3` colorspace on macOS).
-- [**Zed**](https://zed.dev/): Text editor settings.
-- [**tmux**](https://github.com/tmux/tmux/wiki): Terminal multiplexer config in `dot_config/tmux/`.
-- [**cmux**](https://github.com/manaflow-ai/cmux): macOS-native multiplexer config in `dot_config/cmux/`.
-- [**btop**](https://github.com/aristocratos/btop): System monitor (themes only; per-machine `btop.conf` stays local).
 
-All configurations use the [**Catppuccin Mocha**](https://catppuccin.com/palette/) theme for consistent visual experience across tools.
+- [Ghostty](https://ghostty.org/) has a Catppuccin Mocha terminal configuration.
+- [Zed](https://zed.dev/) has editor settings.
 
-## Install (Linux or macOS)
+## Install on Linux or macOS
 
-- One-liner:
+The one-line path requires [curl](https://curl.se/download.html). [Git](https://git-scm.com/downloads) is also required when zsh is present and Antidote needs to be installed. Neither tool is installed by these dotfiles.
 
-```bash
+The one-line install downloads chezmoi, initializes this repository, and applies it:
+
+```sh
 sh -c "$(curl --proto '=https' --tlsv1.2 -fsSL https://get.chezmoi.io/lb)" -- init --apply ajholzbach
 ```
 
-- With Homebrew:
+To review the changes before applying them:
 
-```bash
+```sh
+sh -c "$(curl --proto '=https' --tlsv1.2 -fsSL https://get.chezmoi.io/lb)" -- init ajholzbach
+~/.local/bin/chezmoi diff
+~/.local/bin/chezmoi apply
+```
+
+If installing with Homebrew is preferred:
+
+```sh
 brew install chezmoi
 chezmoi init --apply ajholzbach
 ```
 
-This clones the repository as a Chezmoi source and immediately applies the files from `home/` into `$HOME`. The bootstrap scripts then:
+## Install on Windows
 
-1. Create or update a pre-install restore point before any managed file changes.
-2. Install the latest Antidote checkout when zsh is present and Antidote is absent.
-3. Install the latest stable Starship into a user-local directory when Starship is absent.
-4. Save Catppuccin Mocha as Fish's theme when Fish is present.
-5. On Windows, add a marked loader to the standard PowerShell profile files while preserving existing content.
-
-The scripts do not use `sudo`, install a shell, change the login shell, or call an operating-system package manager.
-Git is required only when zsh is already installed and Antidote needs to be cloned.
-
-### Arch and CachyOS
-
-Use the same one-liner above. The bootstrap has no dependency on pacman or Shelly because Chezmoi and Starship are installed in user-local directories. The Arch path is covered by the Docker suite; CachyOS itself is not emulated separately.
-
-### Windows
-
-Install Chezmoi for the current user, refresh the process PATH, and apply:
+Install chezmoi for the current user, refresh the process path, and apply:
 
 ```powershell
 winget install --id twpayne.chezmoi --exact --scope user --installer-type portable
@@ -92,18 +103,75 @@ $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + [IO.Path]
 chezmoi init --apply ajholzbach
 ```
 
-The Windows scripts install the latest available Starship through WinGet, with Scoop as a fallback, and load the shared `~/.config/powershell/profile.ps1` from PowerShell 7 and Windows PowerShell.
+The Windows setup installs Starship through WinGet with Scoop as a fallback. It loads the shared PowerShell profile from PowerShell 7 and Windows PowerShell.
+
+## Recommended tools
+
+The tools below are recommended and installed separately. Their configuration is guarded, so none are required for `chezmoi apply`.
+
+| Tool | What it enables | Installation |
+| --- | --- | --- |
+| MesloLG Nerd Font | Prompt and eza icons plus the configured font in Ghostty and Zed | [Official download](https://www.nerdfonts.com/font-downloads) |
+| Fish | The primary interactive shell setup with autoloaded functions | [Official packages](https://fishshell.com/) |
+| eza | `ls`, `ll`, `la`, and `lt` aliases with icons and directory grouping | [Official instructions](https://eza.rocks/) |
+| bat | The configured `cat` alias and Catppuccin theme | [Official instructions](https://github.com/sharkdp/bat#installation) |
+| zoxide | Directory navigation based on command history | [Official instructions](https://github.com/ajeetdsouza/zoxide#installation) |
+| Fisher | The three tracked Fish plugins | [Official instructions](https://github.com/jorgebucaran/fisher#installation) |
+| fzf | Fuzzy completion and shell key bindings | [Official instructions](https://github.com/junegunn/fzf#installation) |
+| mise | Development tool versions and shell activation | [Official instructions](https://mise.jdx.dev/installing-mise.html) |
+
+## After installation
+
+Nothing changes the account's default shell. To use Fish as the login shell, first confirm that its path is listed in `/etc/shells`, then run:
+
+```sh
+chsh -s "$(command -v fish)"
+```
+
+After following Fisher's [installation instructions](https://github.com/jorgebucaran/fisher#installation), sync the tracked plugin list with:
+
+```fish
+fisher_setup
+```
+
+Xonsh is also optional. Install its managed Python environment with:
+
+```sh
+uv tool install --managed-python 'xonsh[full]' \
+  --with-requirements ~/.config/xonsh/tool-requirements.txt
+```
+
+Keep machine-specific values outside the repository:
+
+- `~/.config/local-env.sh` for Bash and zsh
+- `~/.config/local-env.fish` for Fish
+- `~/.config/local-env.ps1` for PowerShell
+
+For example:
+
+```sh
+umask 077
+mkdir -p ~/.config
+${EDITOR:-vi} ~/.config/local-env.sh
+```
 
 ## Uninstall
 
-Preview and then restore the state captured before the first apply:
+Preview the restore:
 
-```bash
+```sh
 sh "$(chezmoi source-path)/uninstall.sh" --dry-run
+```
+
+Restore the pre-install state:
+
+```sh
 sh "$(chezmoi source-path)/uninstall.sh" --yes
 ```
 
-PowerShell equivalents:
+Use `--keep-chezmoi` to preserve the local chezmoi source and metadata.
+
+On Windows:
 
 ```powershell
 $uninstall = Join-Path (chezmoi source-path) 'uninstall.ps1'
@@ -111,117 +179,14 @@ $uninstall = Join-Path (chezmoi source-path) 'uninstall.ps1'
 & $uninstall -Yes
 ```
 
-The uninstall helpers restore previous files and Fish colors, remove newly managed targets, and remove unchanged Starship and Antidote installations owned by these dotfiles. Add `--keep-chezmoi` or `-KeepChezmoi` to preserve the local Chezmoi source and metadata.
-
-## Recommended Packages
-
-To get the full experience from these dotfiles, consider installing these optional packages:
-
-### Essential Tools
-
-#### [Starship](https://starship.rs/) (Cross-shell prompt)
-**Installed automatically by Chezmoi scripts.** Provides the customized prompt with OS detection, git status, and development environment info.
-
-### Recommended Tools
-
-#### [Fish Shell](https://github.com/fish-shell/fish-shell)
-**Why**: Modern shell with excellent autocompletion and scripting. The configuration also works without Fish, so using it is a preference rather than an installation requirement.
-```bash
-# macOS
-brew install fish
-
-# Linux
-# Follow instructions at https://fishshell.com/
-```
-
-### Optional Tools
-
-#### [Mise](https://mise.jdx.dev/) (Development Environment Manager)
-**Why**: Manages development tool versions (Node.js, Go, Java, etc.). No Chezmoi script depends on it.
-```bash
-# macOS
-brew install mise
-
-# Linux
-curl https://mise.run | sh
-```
-
-### Quality of Life Improvements
-
-#### [Bat](https://github.com/sharkdp/bat) (Enhanced cat)
-**Why**: Syntax highlighting and Git integration for file viewing. Pre-configured with Catppuccin theme and used by guarded aliases when available.
-```bash
-# macOS
-brew install bat
-
-# Cross-platform with mise
-mise use -g bat
-```
-
-#### [Zoxide](https://github.com/ajeetdsouza/zoxide) (Smart cd)
-**Why**: Learns your directory usage patterns and provides fast navigation when installed.
-```bash
-# macOS
-brew install zoxide
-
-# Cross-platform with mise
-mise use -g zoxide
-```
-
-#### [Xonsh](https://xon.sh/) (Python-powered shell, optional)
-**Why**: Hybrid Python/shell syntax for when you want real Python objects in your pipelines. Side-by-side with Fish; not a login shell.
-```bash
-# Recommended: uv tool install (cross-platform, isolated)
-uv tool install --managed-python 'xonsh[full]' \
-  --with-requirements ~/.config/xonsh/tool-requirements.txt
-```
-
-#### [gawk](https://www.gnu.org/software/gawk/) (faster zsh startup)
-**Why**: Antidote probes for `gawk` at shell startup. Installing it avoids the fallback scan and is useful for GNU-awk scripts in general.
-```bash
-# macOS
-brew install gawk
-
-# Linux examples
-sudo apt install gawk     # Debian/Ubuntu
-sudo dnf install gawk     # Fedora
-sudo pacman -S gawk       # Arch/CachyOS
-```
-
-### Post-Install Setup
-
-The bootstrap does not change the account's default shell. If Fish should be the login shell, first verify that its path is listed in `/etc/shells`, then run:
-
-```bash
-chsh -s "$(command -v fish)"
-```
-
-For machine-local environment values, create the matching file without placing secret values in shell history:
-
-```bash
-umask 077
-mkdir -p ~/.config
-${EDITOR:-vi} ~/.config/local-env.sh
-```
-
-Use `~/.config/local-env.fish` for Fish syntax and `~/.config/local-env.ps1` for PowerShell syntax.
-
 ## Testing
 
-Run the complete local Docker gate before pushing:
+Run the complete Docker gate before pushing:
 
-```bash
+```sh
 ./tests/test.sh all
 ```
 
-The selectors are `minimal`, `ubuntu`, `arch`, and `powershell`. The PowerShell suite runs rendered Windows scripts under `pwsh` with mocked package managers; it is not a native-Windows test. See `tests/README.md` for details.
+The selectors are `minimal`, `ubuntu`, `arch`, and `powershell`. The PowerShell suite renders and tests the Windows scripts under `pwsh`. It is not a native Windows test.
 
-## Notes
-
-- All active configuration is managed through `home/` and Chezmoi.
-- Machine-local env (secrets, work credentials, per-host overrides) lives in `~/.config/local-env.{sh,fish,ps1}` outside this repository.
-- Xonsh-specific package management uses `~/.config/xonsh/tool-requirements.txt` as the source of truth for what is installed alongside Xonsh in its uv tool environment. Rebuild after editing with:
-  ```bash
-  uv tool install --reinstall --managed-python 'xonsh[full]' \
-    --with-requirements ~/.config/xonsh/tool-requirements.txt
-  ```
+See [tests/README.md](tests/README.md) for the full test matrix and troubleshooting notes.

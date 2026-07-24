@@ -11,6 +11,10 @@ if not set -q BAT_CONFIG_PATH
     set -xg BAT_CONFIG_PATH $HOME/.config/bat/config
 end
 
+if not set -q COPYFILE_DISABLE
+    set -xg COPYFILE_DISABLE 1
+end
+
 # Per-machine env (untracked)
 if not set -q DOTFILES_LOADING_LOCAL_ENV; and test -f $HOME/.config/local-env.fish
     set -g DOTFILES_LOADING_LOCAL_ENV 1

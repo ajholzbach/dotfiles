@@ -328,10 +328,6 @@ assert_nonempty_file "$HOME/.config/starship.toml" \
     "Starship configuration installed" \
     "Starship configuration missing"
 
-assert_absent "$HOME/.config/cmux/settings.json" \
-    "macOS-only cmux settings excluded on Linux" \
-    "macOS-only cmux settings were installed on Linux"
-
 if command -v starship >/dev/null 2>&1 && \
         starship --version | grep -Eq '^starship [0-9]+\.[0-9]+\.[0-9]+([[:space:]]|$)'; then
     ok "Latest stable Starship installed"
@@ -504,8 +500,13 @@ else
         fail "Fish configuration failed"
     fi
 
-    if fish -ic 'functions -q fisher_setup; and not functions -q fisher' >/dev/null 2>&1; then
-        ok "Fish optional setup is available without auto-installing Fisher"
+    if fish -ic '
+            functions -q fisher_setup
+            and not functions -q fisher
+            and not functions -q tarnow
+            and not functions -q psmem
+            and not functions -q wget' >/dev/null 2>&1; then
+        ok "Fish setup is available without installing Fisher or plugin functions"
     else
         fail "Fish optional setup contract is incorrect"
     fi
@@ -525,6 +526,21 @@ else
         fail "Fish config loses managed Starship with custom XDG_CONFIG_HOME"
     fi
 
+    if env -u COPYFILE_DISABLE PATH="$system_path" zsh -fc '
+            source "$HOME/.profile"
+            [[ "$COPYFILE_DISABLE" == 1 ]]' >/dev/null 2>&1 && \
+            env -u COPYFILE_DISABLE PATH="$system_path" fish -c \
+            'test "$COPYFILE_DISABLE" = 1' >/dev/null 2>&1 && \
+            COPYFILE_DISABLE=keep PATH="$system_path" zsh -fc '
+            source "$HOME/.profile"
+            [[ "$COPYFILE_DISABLE" == keep ]]' >/dev/null 2>&1 && \
+            COPYFILE_DISABLE=keep PATH="$system_path" fish -c \
+            'test "$COPYFILE_DISABLE" = keep' >/dev/null 2>&1; then
+        ok "Zsh and Fish default COPYFILE_DISABLE and preserve overrides"
+    else
+        fail "Zsh or Fish COPYFILE_DISABLE handling is incorrect"
+    fi
+
     if PATH="$system_path" zsh -ic '
             (( ! $+commands[eza] )) &&
             (( ! $+aliases[ls] )) &&
@@ -534,16 +550,8 @@ else
         fail "Zsh eza fallback is incorrect"
     fi
 
-    if PATH="$system_path" fish -ic '
-            not type -q eza
-            and ls / >/dev/null' >/dev/null 2>&1; then
-        ok "Fish falls back to the system ls when eza is unavailable"
-    else
-        fail "Fish eza fallback is incorrect"
-    fi
-
     alias_mock_dir="$(mktemp -d)"
-    for mocked_command in eza wget; do
+    for mocked_command in eza tar wget; do
         printf '%s\n' \
             '#!/usr/bin/env sh' \
             'printf "%s\n" "$*"' \
@@ -568,29 +576,21 @@ else
             [[ "$(la fixture)" == "-a --color=always --group-directories-first --icons=always fixture" ]] &&
             [[ "$(lt fixture)" == "-aT --color=always --group-directories-first --icons=always fixture" ]] &&
             [[ "$(wget fixture)" == "-c fixture" ]] &&
-            psmem_output=("${(@f)$(psmem10)}") &&
-            (( ${#psmem_output} == 11 )) &&
-            [[ "${psmem_output[2]}" == *process12 ]] &&
-            [[ "${psmem_output[11]}" == *process3 ]]' >/dev/null 2>&1; then
-        ok "Zsh utility aliases select eza, resume wget, and sort memory portably"
+            [[ "$(tarnow archive.tar.gz fixture)" == "-acf archive.tar.gz fixture" ]] &&
+            [[ "$(untar archive.tar.gz)" == "-xvf archive.tar.gz" ]] &&
+            psmem_all_output=("${(@f)$(psmem)}") &&
+            (( ${#psmem_all_output} == 13 )) &&
+            [[ "${psmem_all_output[2]}" == *process12 ]] &&
+            [[ "${psmem_all_output[13]}" == *process1 ]] &&
+            psmem_top_output=("${(@f)$(psmem10)}") &&
+            (( ${#psmem_top_output} == 11 )) &&
+            [[ "${psmem_top_output[2]}" == *process12 ]] &&
+            [[ "${psmem_top_output[11]}" == *process3 ]]' >/dev/null 2>&1; then
+        ok "Zsh utility aliases select eza, resume wget, archive files, and sort memory"
     else
         fail "Zsh utility aliases are incorrect"
     fi
 
-    if PATH="$alias_mock_dir:$PATH" fish -ic '
-            test (ls fixture) = "--color=always --group-directories-first --icons=always fixture"
-            and test (ll fixture) = "-l --color=always --group-directories-first --icons=always fixture"
-            and test (la fixture) = "-a --color=always --group-directories-first --icons=always fixture"
-            and test (lt fixture) = "-aT --color=always --group-directories-first --icons=always fixture"
-            and test (wget fixture) = "-c fixture"
-            and set -l psmem_output (psmem10)
-            and test (count $psmem_output) -eq 11
-            and string match -q "*process12" "$psmem_output[2]"
-            and string match -q "*process3" "$psmem_output[11]"' >/dev/null 2>&1; then
-        ok "Fish utility functions lazily select eza, resume wget, and sort memory portably"
-    else
-        fail "Fish utility functions are incorrect"
-    fi
     rm -rf "$alias_mock_dir"
 
     if xonsh -i -c 'exit' >/dev/null 2>&1; then

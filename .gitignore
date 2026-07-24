@@ -18,10 +18,4 @@ home/dot_config/fish/generated_completions/*
 home/dot_config/fish/themes/*
 
 !home/dot_config/fish/functions/fisher_setup.fish
-!home/dot_config/fish/functions/la.fish
-!home/dot_config/fish/functions/ll.fish
-!home/dot_config/fish/functions/ls.fish
-!home/dot_config/fish/functions/lt.fish
-!home/dot_config/fish/functions/psmem10.fish
-!home/dot_config/fish/functions/wget.fish
 !home/dot_config/fish/themes/Catppuccin Mocha.theme

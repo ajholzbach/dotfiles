@@ -136,6 +136,9 @@ fi
 
 if [[ $- == *i* ]]; then
     alias wget='wget -c'
+    alias tarnow='tar -acf'
+    alias untar='tar -xvf'
+    alias psmem='ps aux | { IFS= read -r _dotfiles_ps_header; print -r -- "$_dotfiles_ps_header"; sort -nrk 4; }'
     alias psmem10='ps aux | { IFS= read -r _dotfiles_ps_header; print -r -- "$_dotfiles_ps_header"; sort -nrk 4 | head -n 10; }'
 fi
 
