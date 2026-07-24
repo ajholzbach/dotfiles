@@ -124,6 +124,21 @@ if command -v bat &> /dev/null; then
     fi
 fi
 
+# Add eza aliases if it exists
+if command -v eza &> /dev/null; then
+    if [[ $- == *i* ]]; then
+        alias ls='eza --color=always --group-directories-first --icons=always'
+        alias ll='eza -l --color=always --group-directories-first --icons=always'
+        alias la='eza -a --color=always --group-directories-first --icons=always'
+        alias lt='eza -aT --color=always --group-directories-first --icons=always'
+    fi
+fi
+
+if [[ $- == *i* ]]; then
+    alias wget='wget -c'
+    alias psmem10='ps aux | { IFS= read -r _dotfiles_ps_header; print -r -- "$_dotfiles_ps_header"; sort -nrk 4 | head -n 10; }'
+fi
+
 
 # Add fzf if it exists and set catppuccin theme
 if command -v fzf &> /dev/null; then

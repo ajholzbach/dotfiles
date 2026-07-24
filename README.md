@@ -40,6 +40,8 @@ Any machine-specific exports (work tokens, internal credentials, per-host overri
 - [**mise**](https://mise.jdx.dev/): Optional development environment manager integration in Bash, zsh, Fish, and Xonsh. No Chezmoi script requires mise. Shared settings live in `dot_config/mise/conf.d/00-baseline.toml`; per-machine `[tools]` belong in the intentionally unmanaged `~/.config/mise/config.toml`.
 - [**conda**](https://github.com/conda-forge/miniforge): Lazy-load setup for fast shell startup; Xonsh wraps `conda shell.xonsh hook` so a fresh shell does not pay the initialization cost until the first `conda` invocation.
 - [**fzf**](https://github.com/junegunn/fzf): Fuzzy finder integration when installed.
+- [**eza**](https://eza.rocks/): Guarded `ls`, `ll`, `la`, and `lt` aliases in Fish and zsh.
+- **Shell utilities**: Fish and zsh provide a resumable `wget` alias and the portable `psmem10` memory view.
 
 ### Applications
 - [**Ghostty**](https://ghostty.org/): Terminal emulator configuration (Catppuccin Mocha theme, MesloLGS Nerd Font, `display-p3` colorspace on macOS).

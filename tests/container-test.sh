@@ -525,6 +525,74 @@ else
         fail "Fish config loses managed Starship with custom XDG_CONFIG_HOME"
     fi
 
+    if PATH="$system_path" zsh -ic '
+            (( ! $+commands[eza] )) &&
+            (( ! $+aliases[ls] )) &&
+            command ls / >/dev/null' >/dev/null 2>&1; then
+        ok "Zsh leaves ls unchanged when eza is unavailable"
+    else
+        fail "Zsh eza fallback is incorrect"
+    fi
+
+    if PATH="$system_path" fish -ic '
+            not type -q eza
+            and ls / >/dev/null' >/dev/null 2>&1; then
+        ok "Fish falls back to the system ls when eza is unavailable"
+    else
+        fail "Fish eza fallback is incorrect"
+    fi
+
+    alias_mock_dir="$(mktemp -d)"
+    for mocked_command in eza wget; do
+        printf '%s\n' \
+            '#!/usr/bin/env sh' \
+            'printf "%s\n" "$*"' \
+            > "$alias_mock_dir/$mocked_command"
+        chmod +x "$alias_mock_dir/$mocked_command"
+    done
+    printf '%s\n' \
+        '#!/usr/bin/env sh' \
+        '[ "$*" = aux ] || exit 64' \
+        'printf "%s\n" "USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND"' \
+        'index=1' \
+        'while [ "$index" -le 12 ]; do' \
+        '    printf "owner %d 0.0 %d.0 0 0 ? S 00:00 0:00 process%d\n" "$index" "$index" "$index"' \
+        '    index=$((index + 1))' \
+        'done' \
+        > "$alias_mock_dir/ps"
+    chmod +x "$alias_mock_dir/ps"
+
+    if PATH="$alias_mock_dir:$PATH" zsh -ic '
+            [[ "$(ls fixture)" == "--color=always --group-directories-first --icons=always fixture" ]] &&
+            [[ "$(ll fixture)" == "-l --color=always --group-directories-first --icons=always fixture" ]] &&
+            [[ "$(la fixture)" == "-a --color=always --group-directories-first --icons=always fixture" ]] &&
+            [[ "$(lt fixture)" == "-aT --color=always --group-directories-first --icons=always fixture" ]] &&
+            [[ "$(wget fixture)" == "-c fixture" ]] &&
+            psmem_output=("${(@f)$(psmem10)}") &&
+            (( ${#psmem_output} == 11 )) &&
+            [[ "${psmem_output[2]}" == *process12 ]] &&
+            [[ "${psmem_output[11]}" == *process3 ]]' >/dev/null 2>&1; then
+        ok "Zsh utility aliases select eza, resume wget, and sort memory portably"
+    else
+        fail "Zsh utility aliases are incorrect"
+    fi
+
+    if PATH="$alias_mock_dir:$PATH" fish -ic '
+            test (ls fixture) = "--color=always --group-directories-first --icons=always fixture"
+            and test (ll fixture) = "-l --color=always --group-directories-first --icons=always fixture"
+            and test (la fixture) = "-a --color=always --group-directories-first --icons=always fixture"
+            and test (lt fixture) = "-aT --color=always --group-directories-first --icons=always fixture"
+            and test (wget fixture) = "-c fixture"
+            and set -l psmem_output (psmem10)
+            and test (count $psmem_output) -eq 11
+            and string match -q "*process12" "$psmem_output[2]"
+            and string match -q "*process3" "$psmem_output[11]"' >/dev/null 2>&1; then
+        ok "Fish utility functions lazily select eza, resume wget, and sort memory portably"
+    else
+        fail "Fish utility functions are incorrect"
+    fi
+    rm -rf "$alias_mock_dir"
+
     if xonsh -i -c 'exit' >/dev/null 2>&1; then
         ok "Xonsh configuration starts"
     else
