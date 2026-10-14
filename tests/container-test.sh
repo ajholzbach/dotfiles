@@ -19,7 +19,8 @@ for posix_template in \
         run_before_00-create-restore-point.sh.tmpl \
         run_before_11-install-antidote.sh.tmpl \
         run_before_12-install-starship.sh.tmpl \
-        run_after_20-save-fish-theme.sh.tmpl; do
+        run_after_20-save-fish-theme.sh.tmpl \
+        run_onchange_after_30-init-rtk.sh.tmpl; do
     for template_os in linux darwin; do
         rendered_script="$(mktemp)"
         if chezmoi execute-template \
@@ -249,12 +250,41 @@ fi
 rm -rf "$installer_fixture" "$starship_installer_test" \
     "$antidote_installer_test" "$fish_theme_installer_test"
 
+log "Checking the RTK hook setup script..."
+rtk_fixture="$(mktemp -d)"
+mkdir -p "$rtk_fixture/bin" "$rtk_fixture/home/.codex"
+printf '%s\n' '#!/usr/bin/env sh' \
+    'printf "%s\n" "$*" >> "$HOME/rtk.log"' \
+    'case "$*" in *--codex*) printf "\n@RTK.md\n" >> "$HOME/.codex/AGENTS.md" ;; esac' \
+    'exit "${FAKE_RTK_STATUS:-0}"' > "$rtk_fixture/bin/rtk"
+chmod +x "$rtk_fixture/bin/rtk"
+PATH="$rtk_fixture/bin:$PATH" chezmoi execute-template \
+    --override-data '{"chezmoi":{"os":"linux"}}' \
+    --file /dotfiles/home/.chezmoiscripts/run_onchange_after_30-init-rtk.sh.tmpl \
+    > "$rtk_fixture/init-rtk.sh"
+for rtk_status in 0 1; do
+    printf '%s\n' '# managed rules' > "$rtk_fixture/home/.codex/AGENTS.md"
+    rm -f "$rtk_fixture/home/rtk.log"
+    if FAKE_RTK_STATUS="$rtk_status" HOME="$rtk_fixture/home" \
+            sh "$rtk_fixture/init-rtk.sh" >/dev/null 2>&1 && \
+            [ "$(cat "$rtk_fixture/home/rtk.log")" = "$(printf '%s\n' 'init -g --auto-patch' 'init -g --codex')" ] && \
+            [ "$(cat "$rtk_fixture/home/.codex/AGENTS.md")" = '# managed rules' ]; then
+        ok "RTK setup exits 0 and keeps the managed AGENTS.md when rtk exits $rtk_status"
+    else
+        fail "RTK setup blocked apply or changed the managed AGENTS.md when rtk exits $rtk_status"
+    fi
+done
+rm -rf "$rtk_fixture"
+
 log "Preparing pre-install fixtures..."
 custom_xdg="$HOME/custom-xdg"
 mkdir -p "$HOME/.config/git"
 printf '%s\n' '# original bashrc' 'export ORIGINAL_BASHRC=1' > "$HOME/.bashrc"
 printf '%s\n' '# original profile' 'export ORIGINAL_PROFILE=1' > "$HOME/.profile"
 printf '%s\n' '# original global ignore' > "$HOME/.config/git/ignore"
+mkdir -p "$HOME/.claude" "$HOME/.codex"
+printf '%s\n' '# original Claude rules' > "$HOME/.claude/CLAUDE.md"
+printf '%s\n' '# original Codex rules' > "$HOME/.codex/AGENTS.md"
 chmod 0640 "$HOME/.bashrc"
 chmod 0600 "$HOME/.profile"
 ln -snf .bashrc "$HOME/.zprofile"
@@ -286,6 +316,8 @@ original_ignore_sha="$(sha256sum "$HOME/.config/git/ignore" | awk '{print $1}')"
 original_bash_mode="$(stat -c '%a' "$HOME/.bashrc")"
 original_profile_mode="$(stat -c '%a' "$HOME/.profile")"
 original_ignore_mode="$(stat -c '%a' "$HOME/.config/git/ignore")"
+original_claude_sha="$(sha256sum "$HOME/.claude/CLAUDE.md" | awk '{print $1}')"
+original_codex_sha="$(sha256sum "$HOME/.codex/AGENTS.md" | awk '{print $1}')"
 
 log "Running the documented init-and-apply path..."
 apply_output=''
@@ -316,7 +348,7 @@ assert_nonempty_file "$state_root/current-backup" \
 
 backup_id="$(sed -n '1p' "$state_root/current-backup")"
 backup_dir="$state_root/backups/$backup_id"
-for original_path in .bashrc .profile .zprofile .config/git/ignore; do
+for original_path in .bashrc .profile .zprofile .config/git/ignore .codex/AGENTS.md; do
     if grep -Fqx -e "$original_path" "$backup_dir/existing-files.txt"; then
         ok "Restore manifest captured $original_path"
     else
@@ -327,6 +359,19 @@ done
 assert_nonempty_file "$HOME/.config/starship.toml" \
     "Starship configuration installed" \
     "Starship configuration missing"
+
+if [ -s "$HOME/.codex/AGENTS.md" ] && \
+        [ "$(cat "$HOME/.claude/rules/agent-instructions.md")" = "$(cat "$HOME/.codex/AGENTS.md")" ]; then
+    ok "Claude Code and Codex receive the same agent instructions"
+else
+    fail "Claude Code and Codex agent instructions are missing or differ"
+fi
+assert_equal "$original_claude_sha" "$(sha256sum "$HOME/.claude/CLAUDE.md" | awk '{print $1}')" \
+    "Existing Claude CLAUDE.md is left unchanged" \
+    "Existing Claude CLAUDE.md was changed"
+assert_absent "$HOME/.codex/hooks.json" \
+    "Codex hook is skipped when RTK is not installed" \
+    "Codex hook was created without RTK"
 
 if command -v starship >/dev/null 2>&1 && \
         starship --version | grep -Eq '^starship [0-9]+\.[0-9]+\.[0-9]+([[:space:]]|$)'; then
@@ -786,6 +831,9 @@ assert_equal "$original_profile_mode" "$(stat -c '%a' "$HOME/.profile")" \
 assert_equal "$original_ignore_mode" "$(stat -c '%a' "$HOME/.config/git/ignore")" \
     "Original Git ignore mode restored" \
     "Original Git ignore mode changed"
+assert_equal "$original_codex_sha" "$(sha256sum "$HOME/.codex/AGENTS.md" | awk '{print $1}')" \
+    "Original Codex AGENTS.md restored byte-for-byte" \
+    "Original Codex AGENTS.md was not restored"
 assert_equal "$original_reconcile_sha" \
     "$(sha256sum "$HOME/.rollback_reconcile_fixture" | awk '{print $1}')" \
     "Original later-managed fixture restored" \
@@ -800,6 +848,9 @@ fi
 assert_absent "$HOME/.zshrc" \
     "Newly managed .zshrc removed" \
     "Newly managed .zshrc remains"
+assert_absent "$HOME/.claude/rules/agent-instructions.md" \
+    "Newly managed Claude rules removed" \
+    "Newly managed Claude rules remain"
 assert_absent "$HOME/.local/bin/starship" \
     "Installer-owned Starship removed" \
     "Installer-owned Starship remains"

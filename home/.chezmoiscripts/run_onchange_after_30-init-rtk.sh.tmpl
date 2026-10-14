@@ -1,0 +1,27 @@
+{{- if and (or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux")) (lookPath "rtk") -}}
+#!/usr/bin/env sh
+set -u
+
+RTK={{ lookPath "rtk" | quote }}
+CODEX_AGENTS="$HOME/.codex/AGENTS.md"
+
+saved_agents="$(mktemp)"
+trap 'rm -f "$saved_agents"' EXIT
+[ -f "$CODEX_AGENTS" ] && cp -p "$CODEX_AGENTS" "$saved_agents"
+
+if "$RTK" init -g --auto-patch </dev/null >/dev/null 2>&1; then
+    printf 'Installed the RTK hook for Claude Code.\n'
+else
+    printf 'Warning: RTK hook setup for Claude Code failed. Run: rtk init -g\n' >&2
+fi
+
+if "$RTK" init -g --codex </dev/null >/dev/null 2>&1; then
+    printf 'Installed the RTK hook for Codex. Trust it in the Codex hook review prompt.\n'
+else
+    printf 'Warning: RTK hook setup for Codex failed. Run: rtk init -g --codex\n' >&2
+fi
+
+# Codex does not expand the @RTK.md reference that rtk appends to AGENTS.md.
+[ -s "$saved_agents" ] && cp -p "$saved_agents" "$CODEX_AGENTS"
+exit 0
+{{- end }}

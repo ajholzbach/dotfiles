@@ -10,6 +10,7 @@ These are my shell and tool configurations. [chezmoi](https://www.chezmoi.io/) m
 - Installs the latest stable [Starship](https://starship.rs/) when it is missing
 - Installs [Antidote](https://github.com/mattmc3/antidote) on Linux and macOS when zsh is present
 - Applies the included Catppuccin Mocha theme on Linux and macOS when Fish is present
+- Gives Claude Code and Codex the same agent instructions and installs RTK hooks when RTK is present
 - Creates a restore point before changing managed files
 - Provides tested uninstall scripts for restoring the previous state
 
