@@ -1,0 +1,23 @@
+# Recommended tools for `tools = true`. See docs/tools.md.
+# Update the CLI tools with `mise upgrade` on Linux and `brew upgrade` on macOS.
+
+# On Linux, mise installs the CLI tools because distribution packages can lag.
+[tools]
+bat = { version = "latest", os = ["linux"] }
+eza = { version = "latest", os = ["linux"] }
+fzf = { version = "latest", os = ["linux"] }
+zoxide = { version = "latest", os = ["linux"] }
+
+# mise skips entries for package managers that this system does not have.
+[bootstrap.packages]
+"brew:bat" = { version = "latest", os = "macos" }
+"brew:eza" = { version = "latest", os = "macos" }
+"brew:fish" = { version = "latest", os = "macos" }
+"brew:fzf" = { version = "latest", os = "macos" }
+"brew:zoxide" = { version = "latest", os = "macos" }
+"apt:fish" = "latest"
+"apt:git" = "latest"
+"apt:zsh" = "latest"
+"pacman:fish" = "latest"
+"pacman:git" = "latest"
+"pacman:zsh" = "latest"

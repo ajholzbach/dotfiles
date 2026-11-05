@@ -137,7 +137,7 @@ try {
     $originalModernHash = Get-Sha256 $modernProfile
 
     Invoke-NativeChecked 'chezmoi init' {
-        & chezmoi --use-builtin-git=true init "file://$repoRoot"
+        & chezmoi --use-builtin-git=true init --promptDefaults "file://$repoRoot"
     }
 
     $restoreTemplate = 'home/.chezmoiscripts/run_before_00-create-restore-point-windows.ps1.tmpl'

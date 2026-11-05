@@ -1,0 +1,35 @@
+# A bare system with passwordless sudo, so the tools install has work to do.
+# Git is present only because the test repository uses a file:// clone.
+ARG BASE_IMAGE=ubuntu:24.04
+FROM ${BASE_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# On Arch, disable pacman's package sandbox in pacman.conf. The sandbox is
+# incompatible with amd64 emulation in some Docker runtimes, and the tools
+# install runs pacman without the --disable-sandbox flag.
+RUN if command -v apt-get >/dev/null; then \
+        apt-get update && \
+        apt-get install -y ca-certificates curl git sudo && \
+        rm -rf /var/lib/apt/lists/*; \
+    else \
+        sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf && \
+        pacman -Syu --noconfirm --needed ca-certificates curl git sudo; \
+    fi
+
+RUN useradd -m -s /bin/bash testuser && \
+    echo 'testuser ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/testuser
+
+USER testuser
+WORKDIR /home/testuser
+
+ARG CHEZMOI_INSTALLER_CACHE_BUST=manual-build
+RUN test -n "$CHEZMOI_INSTALLER_CACHE_BUST" && \
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        -o /tmp/get-chezmoi.sh https://get.chezmoi.io && \
+    sh /tmp/get-chezmoi.sh -b /home/testuser/.local/bin && \
+    rm -f /tmp/get-chezmoi.sh
+
+ENV PATH="/home/testuser/.local/bin:${PATH}"
+
+CMD ["/bin/bash"]

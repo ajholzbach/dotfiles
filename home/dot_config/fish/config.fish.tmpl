@@ -28,31 +28,24 @@ test -d $HOME/bin; and fish_add_path -g $HOME/bin
 test -d $HOME/.local/bin; and fish_add_path -g $HOME/.local/bin
 
 # Add Homebrew to PATH if installed
-if test -x /opt/homebrew/bin/brew
-    fish_add_path -g /opt/homebrew/bin /opt/homebrew/sbin
-    # Set concurrent downloads for Homebrew if not already set
-    if not set -q HOMEBREW_DOWNLOAD_CONCURRENCY
-        set -xg HOMEBREW_DOWNLOAD_CONCURRENCY auto
+for brew_prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew
+    if test -x $brew_prefix/bin/brew
+        fish_add_path -g $brew_prefix/bin $brew_prefix/sbin
+        set -q HOMEBREW_DOWNLOAD_CONCURRENCY; or set -xg HOMEBREW_DOWNLOAD_CONCURRENCY auto
     end
 end
-
-if test -x /usr/local/bin/brew
-    fish_add_path -g /usr/local/bin /usr/local/sbin
-    if not set -q HOMEBREW_DOWNLOAD_CONCURRENCY
-        set -xg HOMEBREW_DOWNLOAD_CONCURRENCY auto
-    end
-end
-
-if test -x /home/linuxbrew/.linuxbrew/bin/brew
-    fish_add_path -g /home/linuxbrew/.linuxbrew/bin /home/linuxbrew/.linuxbrew/sbin
-    if not set -q HOMEBREW_DOWNLOAD_CONCURRENCY
-        set -xg HOMEBREW_DOWNLOAD_CONCURRENCY auto
-    end
-end
+set -e brew_prefix
 
 if status is-interactive
     # Silence fish's built-in welcome banner
     set -g fish_greeting ""
+    # Catppuccin Mocha, from themes/Catppuccin Mocha.theme. chezmoi writes the
+    # values here because `fish_config theme choose` adds 10 ms to startup.
+{{- range include "dot_config/fish/themes/Catppuccin Mocha.theme" | splitList "\n" }}
+{{-   if hasPrefix "fish_" . }}
+    set -g {{ . }}
+{{-   end }}
+{{- end }}
 
     # starship.rs prompt
     if type -q starship

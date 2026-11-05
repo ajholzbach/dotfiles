@@ -1,0 +1,10 @@
+{{- $tools := false -}}
+{{- if ne .chezmoi.os "windows" -}}
+{{-   $tools = promptBoolOnce . "tools" "tools" false -}}
+{{- end -}}
+{{- $data := dict "tools" $tools -}}
+{{- /* Keep machine-local data when chezmoi init regenerates this file. */ -}}
+{{- with (index . "kube") -}}
+{{-   $_ := set $data "kube" . -}}
+{{- end -}}
+{{ dict "data" $data | toToml }}

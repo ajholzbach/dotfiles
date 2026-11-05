@@ -1,0 +1,10 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /* Keep the marked blocks that other tools add, such as
+       "# >>> name >>>" ... "# <<< name <<<", at the top of the file. */ -}}
+{{- range regexFindAll "(?ms)^# >>> [^\n]* >>>$.*?^# <<< [^\n]* <<<$" .chezmoi.stdin -1 -}}
+{{ . }}
+
+{{ end -}}
+if [ -f "$HOME/.bashrc" ]; then
+    . "$HOME/.bashrc"
+fi

@@ -78,7 +78,7 @@ while IFS=$'\t' read -r script_path suites unexpected; do
     seen_suites=','
     for suite in "$@"; do
         case "$suite" in
-            minimal|ubuntu|arch|powershell)
+            minimal|ubuntu|arch|powershell|tools-ubuntu|tools-arch)
                 ;;
             *)
                 echo "Unknown Docker suite '$suite' for $script_path" >&2

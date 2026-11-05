@@ -5,7 +5,7 @@ The local Docker suite is the required validation gate for this repository. It t
 ## Prerequisites
 
 - Docker with a running daemon
-- Network access while resolving the current chezmoi, Python, Starship, Antidote, and zsh plugin releases
+- Network access while resolving the current chezmoi, Python, Starship, Antidote, zsh plugin, Nerd Font, mise, and Fisher releases
 - amd64 emulation for the Arch and PowerShell images when the host is ARM; Docker Desktop and OrbStack normally provide it
 
 ## Run
@@ -18,6 +18,8 @@ From the repository root:
 ./tests/test.sh ubuntu       # Ubuntu compatibility image
 ./tests/test.sh arch         # Arch compatibility image
 ./tests/test.sh powershell   # rendered Windows scripts under pwsh
+./tests/test.sh tools-ubuntu # recommended tools on bare Ubuntu
+./tests/test.sh tools-arch   # recommended tools on bare Arch
 ```
 
 Running `./tests/test.sh` without a selector is equivalent to `all`.
@@ -27,8 +29,10 @@ Running `./tests/test.sh` without a selector is equivalent to `all`.
 | Suite | Base | Purpose |
 |---|---|---|
 | `minimal` | Ubuntu 24.04 | Proves Bash plus Starship works without Fish, zsh, Xonsh, mise, bat, zoxide, fzf, tmux, Vim, or passwordless sudo |
-| `ubuntu` | Ubuntu 24.04 | Installs Antidote, persists the Fish theme, starts the optional shell setup, and loads Vim/tmux configuration |
+| `ubuntu` | Ubuntu 24.04 | Installs Antidote, loads the Fish theme, starts the optional shell setup, and loads Vim/tmux configuration |
 | `arch` | Arch Linux | Exercises the same optional-tool and shell-setup path against rolling Arch userland and pacman package names |
+| `tools-ubuntu` | Ubuntu 24.04 | Installs the recommended tools with `mise bootstrap` and apt on a bare system with passwordless sudo |
+| `tools-arch` | Arch Linux | Installs the recommended tools with `mise bootstrap` and pacman on a bare system with passwordless sudo |
 | `powershell` | PowerShell on Ubuntu 24.04 | Renders Windows-only templates and tests them with isolated WinGet/Scoop mocks and Windows-like profile fixtures |
 
 The PowerShell image is deterministic compatibility coverage for Windows scripts. It does not claim to emulate the Windows kernel, registry, ACLs, path rules, or native package managers; a real Windows smoke test remains appropriate before a release that materially changes Windows behavior.
@@ -37,20 +41,34 @@ The PowerShell image is deterministic compatibility coverage for Windows scripts
 
 Each Linux integration container:
 
-1. Starts with pre-existing `.bashrc`, `.profile`, Git ignore, and symlink fixtures.
-2. Runs `chezmoi init --apply file:///dotfiles` as an unprivileged user, invoking the freshly installed executable by absolute path while its install directory is absent from `PATH`. This mirrors the boundary used by the documented one-line installer.
-3. Verifies the restore-point manifests before checking managed output.
-4. Verifies working Starship and conditional Antidote installations with ownership tracking.
-5. Verifies Fish theme persistence, then starts every optional shell/tool available in that image.
-6. Runs a second ordinary `chezmoi apply` with scripts enabled.
-7. Requires a clean managed-file diff after the second apply. Scripts are excluded only from this diff display because ordinary `run_` scripts are expected to appear as runnable every time; they are included in both actual applies.
-8. Runs uninstall first as a dry run and then for real.
-9. Verifies byte-for-byte content, mode, symlink, and Fish-color restoration; newly managed targets and installer-owned Starship and Antidote must be gone.
+1. Renders every POSIX script template for Linux and macOS and checks its syntax.
+2. Runs the font, Starship, Antidote, and RTK scripts against fixtures: existing Starship and Antidote installations stay unchanged and unclaimed, and a fresh Antidote install without Git fails without leaving state.
+3. Runs uninstall against fixtures: Starship and Antidote that changed after installation stay. The optional-tool images also restore legacy Fish theme state and stop when Fish fails.
+4. Starts with pre-existing `.bashrc`, `.profile`, Git ignore, agent instruction, and symlink fixtures.
+5. Runs `chezmoi init --apply file:///dotfiles` as an unprivileged user, invoking the freshly installed executable by absolute path while its install directory is absent from `PATH`. This mirrors the boundary used by the documented one-line installer.
+6. Verifies that the restore point captured the originals, and that Starship and conditional Antidote installed with ownership markers.
+7. Verifies that interactive Fish loads the Catppuccin Mocha colors, then starts every optional shell and tool available in that image.
+8. Runs a second ordinary `chezmoi apply` with scripts enabled and a newly managed path, and verifies that the restore point captured its original.
+9. Requires a clean managed-file diff after the second apply. Scripts are excluded only from this diff display because ordinary `run_` scripts are expected to appear as runnable every time; they are included in both actual applies.
+10. Runs uninstall first as a dry run, which must not change the home directory, and then for real.
+11. Verifies byte-for-byte content, mode, and symlink restoration. Newly managed targets and installer-owned Starship and Antidote must be gone.
 
 The minimal image also asserts that the dotfiles neither require nor install optional tools.
 Git is present only because the isolated local repository uses a `file://` clone;
 chezmoi's built-in Git covers the documented HTTPS bootstrap when an external
 Git command is unavailable.
+
+## What the tools suites prove
+
+Each tools container:
+
+1. Checks that only a tools install on Linux or macOS renders the tool scripts and the mise config.
+2. Checks that `chezmoi init` keeps the tools answer and machine-local `kube` data, and that Windows skips the prompt.
+3. Runs the bootstrap script against a mock `mise` and checks the `mise bootstrap` command and the error for a mise without bootstrap.
+4. Runs `chezmoi init --apply` with tools and checks every package in the mise config for that system.
+5. Checks that zsh finds eza at startup and that Fisher installed the tracked plugins.
+6. Clears the script state, applies again with a `sudo` that always fails, and requires a clean managed-file diff.
+7. Runs uninstall and checks that the installed tools stay.
 
 ## What the PowerShell suite proves
 

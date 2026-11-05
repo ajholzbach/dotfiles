@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 usage() {
-    echo "Usage: $0 [all|minimal|ubuntu|arch|powershell]"
+    echo "Usage: $0 [all|minimal|ubuntu|arch|powershell|tools-ubuntu|tools-arch]"
 }
 
 if [ "$#" -gt 1 ]; then
@@ -15,9 +15,9 @@ fi
 
 case "${1:-all}" in
     all)
-        SUITES=(minimal ubuntu arch powershell)
+        SUITES=(minimal ubuntu arch powershell tools-ubuntu tools-arch)
         ;;
-    minimal|ubuntu|arch|powershell)
+    minimal|ubuntu|arch|powershell|tools-ubuntu|tools-arch)
         SUITES=("$1")
         ;;
     *)
@@ -113,6 +113,14 @@ for suite in "${SUITES[@]}"; do
                 uninstall.sh
             )
             ;;
+        tools-ubuntu|tools-arch)
+            required_paths+=(
+                tests/Dockerfile.tools
+                tests/tools-test.sh
+                tests/lib/testlib.sh
+                uninstall.sh
+            )
+            ;;
         powershell)
             required_paths+=(
                 tests/Dockerfile.powershell
@@ -201,6 +209,17 @@ run_suite() {
                 -e "TEST_MODE=$mode"
             )
             test_command=(bash /dotfiles/tests/container-test.sh)
+            ;;
+        tools-ubuntu)
+            dockerfile="$STAGED_REPO/tests/Dockerfile.tools"
+            build_args+=(--build-arg BASE_IMAGE=ubuntu:24.04)
+            test_command=(bash /dotfiles/tests/tools-test.sh)
+            ;;
+        tools-arch)
+            dockerfile="$STAGED_REPO/tests/Dockerfile.tools"
+            build_args+=(--build-arg BASE_IMAGE=archlinux:base)
+            platform_args=(--platform linux/amd64)
+            test_command=(bash /dotfiles/tests/tools-test.sh)
             ;;
         powershell)
             dockerfile="$STAGED_REPO/tests/Dockerfile.powershell"

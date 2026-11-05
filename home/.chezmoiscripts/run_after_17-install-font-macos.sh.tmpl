@@ -1,0 +1,11 @@
+{{- if eq .chezmoi.os "darwin" -}}
+{{ template "common.sh" . }}
+if [ -f "$HOME/Library/Fonts/MesloLGSNerdFont-Regular.ttf" ]; then
+    printf 'MesloLGS Nerd Font is already installed.\n'
+elif brew_bin="$(find_tool brew)"; then
+    printf 'Installing MesloLGS Nerd Font with Homebrew...\n'
+    "$brew_bin" install --cask font-meslo-lg-nerd-font
+else
+    printf 'Install Homebrew, then apply again to install MesloLGS Nerd Font.\n'
+fi
+{{- end }}

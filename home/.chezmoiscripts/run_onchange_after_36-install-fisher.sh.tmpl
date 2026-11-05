@@ -1,0 +1,33 @@
+{{- if and (index . "tools") (ne .chezmoi.os "windows") -}}
+{{ template "tools-script.sh" . }}
+# Run again when the plugin list changes or Fish appears on PATH: {{ lookPath "fish" }}
+PLUGINS='{{ include "dot_config/fish/fish_plugins" | trim }}'
+
+if ! fish_bin="$(find_tool fish)"; then
+    printf 'Fish is not installed; skipping Fisher.\n'
+    exit 0
+fi
+
+run_fish() {
+    DOTFILES_LOADING_LOCAL_ENV=1 XDG_CONFIG_HOME="$HOME/.config" "$fish_bin" "$@"
+}
+
+# Fisher keeps exactly the plugins in fish_plugins.
+if run_fish -c 'functions -q fisher'; then
+    printf 'Syncing Fish plugins with Fisher...\n'
+    run_fish -c 'fisher update'
+else
+    printf 'Installing Fisher and the Fish plugins...\n'
+    download_installer https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish
+    # $argv is a Fish variable.
+    # shellcheck disable=SC2016
+    run_fish -c 'source $argv[1]; and fisher update' "$installer"
+fi
+
+# Fisher exits 0 when a plugin download fails, so check the result.
+installed="$(run_fish -c 'fisher list')"
+for plugin in $PLUGINS; do
+    printf '%s\n' "$installed" | grep -Fqx -e "$plugin" || \
+        die "Fisher did not install $plugin."
+done
+{{ end -}}

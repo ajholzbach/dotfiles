@@ -1,0 +1,15 @@
+{{- /* macOS installs this font with Homebrew in run_after_17-install-font-macos. */ -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   $fontDir := ".local/share/fonts" -}}
+# MesloLGS Nerd Font for the prompt, eza icons, Ghostty, and Zed. Each style is
+# a file entry so chezmoi never takes ownership of the font directory itself.
+{{-   range list "Regular" "Bold" "Italic" "BoldItalic" }}
+{{-     $font := printf "MesloLGSNerdFont-%s.ttf" . }}
+
+[{{ printf "%s/%s" $fontDir $font | quote }}]
+    type = "archive-file"
+    url = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/Meslo.tar.xz"
+    path = {{ $font | quote }}
+    refreshPeriod = "168h"
+{{-   end }}
+{{- end }}

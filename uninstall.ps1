@@ -6,11 +6,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$stateBase = if ($env:XDG_STATE_HOME) {
-    $env:XDG_STATE_HOME
-} else {
-    Join-Path $HOME '.local\state'
-}
+$stateBase = if ($env:XDG_STATE_HOME) { $env:XDG_STATE_HOME } else { Join-Path $HOME '.local\state' }
 $stateRoot = Join-Path $stateBase 'dotfiles'
 $currentBackup = Join-Path $stateRoot 'current-backup'
 
@@ -25,14 +21,11 @@ if ([string]::IsNullOrWhiteSpace($backupId) -or $backupId.Contains('..') -or
 }
 
 $backupDir = Join-Path (Join-Path $stateRoot 'backups') $backupId
-$managedManifest = Join-Path $backupDir 'managed-files.txt'
-$existingManifest = Join-Path $backupDir 'existing-files.txt'
-$profilesManifest = Join-Path $backupDir 'powershell-profiles.json'
-
-if (-not (Test-Path -LiteralPath $managedManifest -PathType Leaf) -or
-    -not (Test-Path -LiteralPath $existingManifest -PathType Leaf) -or
-    -not (Test-Path -LiteralPath $profilesManifest -PathType Leaf)) {
-    throw "Restore point $backupId is incomplete; refusing to remove managed files."
+$manifestNames = @('managed-files.txt', 'existing-files.txt', 'powershell-profiles.json')
+foreach ($manifestName in $manifestNames) {
+    if (-not (Test-Path -LiteralPath (Join-Path $backupDir $manifestName) -PathType Leaf)) {
+        throw "Restore point $backupId is incomplete; refusing to remove managed files."
+    }
 }
 
 function Test-SafeRelativePath {
@@ -51,7 +44,7 @@ function Test-RealDirectory {
     }
 
     $item = Get-Item -LiteralPath $Path -Force
-    return $item.PSIsContainer -and [string]::IsNullOrWhiteSpace([string]$item.LinkType)
+    return $item.PSIsContainer -and -not $item.LinkType
 }
 
 function Copy-PathPreservingLink {
@@ -60,16 +53,30 @@ function Copy-PathPreservingLink {
         [string]$Destination
     )
 
+    New-Item -ItemType Directory -Path (Split-Path -Parent $Destination) -Force | Out-Null
     $item = Get-Item -LiteralPath $Source -Force
     if ($item.LinkType -in @('SymbolicLink', 'Junction')) {
-        $linkTarget = @($item.Target)[0]
-        New-Item -ItemType $item.LinkType -Path $Destination -Target $linkTarget -Force | Out-Null
+        New-Item -ItemType $item.LinkType -Path $Destination -Target (@($item.Target)[0]) -Force | Out-Null
     } else {
         Copy-Item -LiteralPath $Source -Destination $Destination -Force
     }
 }
 
-$managed = @([IO.File]::ReadAllLines($managedManifest))
+# Invoke-Native NAME ARGUMENTS: run a command and throw when it fails. Check $?
+# too because PowerShell shims such as scoop do not always set $LASTEXITCODE.
+function Invoke-Native {
+    param([string]$Name, [string[]]$Arguments)
+
+    $global:LASTEXITCODE = $null
+    & $Name @Arguments
+    $succeeded = $?
+    if (-not $succeeded -or ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0)) {
+        $exitDescription = if ($null -eq $LASTEXITCODE) { 'PowerShell command failure' } else { "exit $LASTEXITCODE" }
+        throw "$Name $($Arguments -join ' ') failed ($exitDescription)."
+    }
+}
+
+$managed = @([IO.File]::ReadAllLines((Join-Path $backupDir 'managed-files.txt')))
 $managedSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 foreach ($path in $managed) {
     if (-not (Test-SafeRelativePath -Path $path)) {
@@ -81,7 +88,7 @@ foreach ($path in $managed) {
 }
 
 $existing = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-foreach ($path in [IO.File]::ReadAllLines($existingManifest)) {
+foreach ($path in [IO.File]::ReadAllLines((Join-Path $backupDir 'existing-files.txt'))) {
     if (-not (Test-SafeRelativePath -Path $path) -or -not $managedSet.Contains($path)) {
         throw "Unsafe or unmanaged path in existing-files manifest: $path"
     }
@@ -91,11 +98,12 @@ foreach ($path in [IO.File]::ReadAllLines($existingManifest)) {
 }
 
 try {
-    $profileRecords = @((Get-Content -LiteralPath $profilesManifest -Raw | ConvertFrom-Json))
+    $profileRecords = @((Get-Content -LiteralPath (Join-Path $backupDir 'powershell-profiles.json') -Raw | ConvertFrom-Json))
 } catch {
     throw "Invalid PowerShell profile restore manifest: $($_.Exception.Message)"
 }
 
+# Keep in sync with home/.chezmoitemplates/powershell-profile-paths.ps1.
 $documents = [Environment]::GetFolderPath([Environment+SpecialFolder]::MyDocuments)
 if ([string]::IsNullOrWhiteSpace($documents)) {
     $documents = Join-Path $HOME 'Documents'
@@ -172,41 +180,33 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 $snapshotRestoreMetadata = Join-Path $snapshotDir 'restore-point'
 New-Item -ItemType Directory -Path $snapshotRestoreMetadata -Force | Out-Null
-Copy-Item -LiteralPath $managedManifest -Destination (Join-Path $snapshotRestoreMetadata 'managed-files.txt')
-Copy-Item -LiteralPath $existingManifest -Destination (Join-Path $snapshotRestoreMetadata 'existing-files.txt')
-Copy-Item -LiteralPath $profilesManifest -Destination (Join-Path $snapshotRestoreMetadata 'powershell-profiles.json')
+foreach ($manifestName in $manifestNames) {
+    Copy-Item -LiteralPath (Join-Path $backupDir $manifestName) -Destination (Join-Path $snapshotRestoreMetadata $manifestName)
+}
 
 $snapshotFiles = [System.Collections.Generic.List[string]]::new()
 foreach ($relativePath in $managed) {
     $target = Join-Path $HOME $relativePath
     if (Test-Path -LiteralPath $target) {
-        $snapshotTarget = Join-Path (Join-Path $snapshotDir 'files') $relativePath
-        New-Item -ItemType Directory -Path (Split-Path -Parent $snapshotTarget) -Force | Out-Null
-        Copy-PathPreservingLink -Source $target -Destination $snapshotTarget
+        Copy-PathPreservingLink -Source $target -Destination (Join-Path (Join-Path $snapshotDir 'files') $relativePath)
         $snapshotFiles.Add($relativePath)
     }
 }
 [IO.File]::WriteAllLines((Join-Path $snapshotDir 'captured-managed-files.txt'), $snapshotFiles, $utf8NoBom)
 
-$snapshotProfileRecords = @()
-foreach ($record in $profileRecords) {
+$snapshotProfileRecords = foreach ($record in $profileRecords) {
     $profileExists = Test-Path -LiteralPath $record.Path
     if ($profileExists) {
-        $profileSnapshot = Join-Path $snapshotDir $record.Backup
-        New-Item -ItemType Directory -Path (Split-Path -Parent $profileSnapshot) -Force | Out-Null
-        Copy-PathPreservingLink -Source $record.Path -Destination $profileSnapshot
+        Copy-PathPreservingLink -Source $record.Path -Destination (Join-Path $snapshotDir $record.Backup)
     }
-    $snapshotProfileRecords += [PSCustomObject]@{
+    [PSCustomObject]@{
         Path = $record.Path
         Existed = $profileExists
         Backup = $record.Backup
     }
 }
-[IO.File]::WriteAllText(
-    (Join-Path $snapshotDir 'captured-powershell-profiles.json'),
-    (($snapshotProfileRecords | ConvertTo-Json -Depth 3) + [Environment]::NewLine),
-    $utf8NoBom
-)
+$snapshotProfileJson = ($snapshotProfileRecords | ConvertTo-Json -Depth 3) + [Environment]::NewLine
+[IO.File]::WriteAllText((Join-Path $snapshotDir 'captured-powershell-profiles.json'), $snapshotProfileJson, $utf8NoBom)
 
 foreach ($relativePath in $managed) {
     $target = Join-Path $HOME $relativePath
@@ -215,9 +215,7 @@ foreach ($relativePath in $managed) {
     }
 
     if ($existing.Contains($relativePath)) {
-        $original = Join-Path (Join-Path $backupDir 'files') $relativePath
-        New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
-        Copy-PathPreservingLink -Source $original -Destination $target
+        Copy-PathPreservingLink -Source (Join-Path (Join-Path $backupDir 'files') $relativePath) -Destination $target
         Write-Host "Restored ~\$relativePath"
     } else {
         Write-Host "Removed ~\$relativePath"
@@ -229,16 +227,13 @@ foreach ($record in $profileRecords) {
         Remove-Item -LiteralPath $record.Path -Force
     }
     if ($record.Existed) {
-        $profileBackup = Join-Path $backupDir $record.Backup
-        New-Item -ItemType Directory -Path (Split-Path -Parent $record.Path) -Force | Out-Null
-        Copy-PathPreservingLink -Source $profileBackup -Destination $record.Path
+        Copy-PathPreservingLink -Source (Join-Path $backupDir $record.Backup) -Destination $record.Path
         Write-Host "Restored $($record.Path)"
     }
 }
 
 $starshipMarker = Join-Path $stateRoot 'starship-installed-by-dotfiles'
 $starshipRemovalError = $null
-$starshipOwnershipReleased = $false
 if (Test-Path -LiteralPath $starshipMarker) {
     $markerText = [IO.File]::ReadAllText($starshipMarker).Trim()
     $manager = $null
@@ -253,53 +248,37 @@ if (Test-Path -LiteralPath $starshipMarker) {
         $manager = $markerText
     }
 
+    $versionMatches = $true
     if ($expectedVersion -and (Get-Command starship -ErrorAction SilentlyContinue)) {
-        $LASTEXITCODE = $null
-        $installedVersion = @(& starship --version 2>$null)
-        $versionInvocationSucceeded = $?
-        $versionExitCode = $LASTEXITCODE
-        if (-not $versionInvocationSucceeded -or
-            ($null -ne $versionExitCode -and $versionExitCode -ne 0) -or
-            ($installedVersion -join "`n") -notmatch ('(?m)^starship ' + [regex]::Escape($expectedVersion) + '(?:\s|$)')) {
-            Write-Warning "Starship no longer matches installer-owned version $expectedVersion. Preserving the current command and releasing dotfiles ownership."
-            Remove-Item -LiteralPath $starshipMarker -Force
-            $starshipOwnershipReleased = $true
+        try {
+            $installedVersion = @(Invoke-Native starship @('--version')) -join "`n"
+        } catch {
+            $installedVersion = ''
         }
+        $versionMatches = $installedVersion -match ('(?m)^starship ' + [regex]::Escape($expectedVersion) + '(?:\s|$)')
     }
 
-    if (-not $starshipRemovalError -and -not $starshipOwnershipReleased) {
-        $removeInvocationSucceeded = $false
-        $removeExitCode = $null
-        if ($manager -eq 'winget' -and (Get-Command winget -ErrorAction SilentlyContinue)) {
-            $LASTEXITCODE = $null
-            & winget uninstall --id Starship.Starship --exact --scope user --silent
-            $removeInvocationSucceeded = $?
-            $removeExitCode = $LASTEXITCODE
-        } elseif ($manager -eq 'scoop' -and (Get-Command scoop -ErrorAction SilentlyContinue)) {
-            $LASTEXITCODE = $null
-            & scoop uninstall starship
-            $removeInvocationSucceeded = $?
-            $removeExitCode = $LASTEXITCODE
+    if (-not $versionMatches) {
+        Write-Warning "Starship no longer matches installer-owned version $expectedVersion. Preserving the current command and releasing dotfiles ownership."
+        Remove-Item -LiteralPath $starshipMarker -Force
+    } elseif ($manager -in @('winget', 'scoop') -and (Get-Command $manager -ErrorAction SilentlyContinue)) {
+        $removeArguments = if ($manager -eq 'winget') {
+            @('uninstall', '--id', 'Starship.Starship', '--exact', '--scope', 'user', '--silent')
         } else {
-            $starshipRemovalError = "Could not automatically remove Starship installed with '$manager'."
+            @('uninstall', 'starship')
         }
-
-        if (-not $starshipRemovalError) {
-            if ($removeInvocationSucceeded -and ($null -eq $removeExitCode -or $removeExitCode -eq 0)) {
-                Remove-Item -LiteralPath $starshipMarker -Force
-            } else {
-                $exitDescription = if ($null -eq $removeExitCode) { 'PowerShell command failure' } else { "exit $removeExitCode" }
-                $starshipRemovalError = "$manager could not uninstall Starship ($exitDescription)."
-            }
+        try {
+            Invoke-Native $manager $removeArguments
+            Remove-Item -LiteralPath $starshipMarker -Force
+        } catch {
+            $starshipRemovalError = $_.Exception.Message
         }
+    } else {
+        $starshipRemovalError = "Could not automatically remove Starship installed with '$manager'."
     }
 }
 
-[IO.File]::WriteAllText(
-    (Join-Path $stateRoot 'last-uninstall-snapshot'),
-    $snapshotId + [Environment]::NewLine,
-    $utf8NoBom
-)
+[IO.File]::WriteAllText((Join-Path $stateRoot 'last-uninstall-snapshot'), $snapshotId + [Environment]::NewLine, $utf8NoBom)
 Write-Host "Pre-uninstall files were saved to $snapshotDir"
 
 if ($starshipRemovalError) {
@@ -311,11 +290,7 @@ if ($starshipRemovalError) {
 $lastRestoredBackup = Join-Path $stateRoot 'last-restored-backup'
 $lastRestoredTemporary = "$lastRestoredBackup.$PID.tmp"
 try {
-    [IO.File]::WriteAllText(
-        $lastRestoredTemporary,
-        $backupId + [Environment]::NewLine,
-        $utf8NoBom
-    )
+    [IO.File]::WriteAllText($lastRestoredTemporary, $backupId + [Environment]::NewLine, $utf8NoBom)
     Move-Item -LiteralPath $lastRestoredTemporary -Destination $lastRestoredBackup -Force
 } finally {
     if (Test-Path -LiteralPath $lastRestoredTemporary) {
@@ -325,14 +300,10 @@ try {
 Remove-Item -LiteralPath $currentBackup -Force
 
 if (-not $KeepChezmoi -and (Get-Command chezmoi -ErrorAction SilentlyContinue)) {
-    $LASTEXITCODE = $null
-    & chezmoi purge --force
-    $purgeInvocationSucceeded = $?
-    $purgeExitCode = $LASTEXITCODE
-    if (-not $purgeInvocationSucceeded -or
-        ($null -ne $purgeExitCode -and $purgeExitCode -ne 0)) {
-        $exitDescription = if ($null -eq $purgeExitCode) { 'PowerShell command failure' } else { "exit $purgeExitCode" }
-        throw "chezmoi purge failed ($exitDescription). The dotfiles themselves were already restored."
+    try {
+        Invoke-Native chezmoi @('purge', '--force')
+    } catch {
+        throw "$($_.Exception.Message) The dotfiles themselves were already restored."
     }
     Write-Host 'Purged the chezmoi source, configuration, and state.'
 } else {

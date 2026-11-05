@@ -1,0 +1,27 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+{{ template "common.sh" . }}
+umask 077
+
+ANTIDOTE_PATH="$HOME/.antidote"
+INSTALL_MARKER="$STATE_ROOT/antidote-installed-by-dotfiles"
+
+if ! command -v zsh >/dev/null 2>&1; then
+    printf 'Zsh is not installed; skipping Antidote.\n'
+    exit 0
+fi
+if [ -e "$ANTIDOTE_PATH" ] || [ -L "$ANTIDOTE_PATH" ]; then
+    printf 'Antidote is already installed at %s.\n' "$ANTIDOTE_PATH"
+    exit 0
+fi
+command -v git >/dev/null 2>&1 || die "git is required to install Antidote when zsh is installed."
+
+staging="$(mktemp -d "$HOME/.antidote.XXXXXX")"
+trap 'rm -rf "$staging"' EXIT
+
+printf 'Installing the latest Antidote...\n'
+git clone --quiet --depth=1 https://github.com/mattmc3/antidote.git "$staging"
+mkdir -p "$STATE_ROOT"
+# Uninstall removes Antidote only while its checkout is still at this commit.
+git -C "$staging" rev-parse HEAD > "$INSTALL_MARKER"
+mv "$staging" "$ANTIDOTE_PATH"
+{{- end }}
