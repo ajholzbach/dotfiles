@@ -12,16 +12,30 @@ run_fish() {
     DOTFILES_LOADING_LOCAL_ENV=1 XDG_CONFIG_HOME="$HOME/.config" "$fish_bin" "$@"
 }
 
-# Fisher keeps exactly the plugins in fish_plugins.
-if run_fish -c 'functions -q fisher'; then
+# Fisher keeps exactly the plugins in fish_plugins, including itself.
+# shellcheck disable=SC2016 # The single-quoted variables are Fish variables.
+if run_fish -c 'contains jorgebucaran/fisher $_fisher_plugins'; then
     printf 'Syncing Fish plugins with Fisher...\n'
     run_fish -c 'fisher update'
 else
     printf 'Installing Fisher and the Fish plugins...\n'
     download_installer https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish
-    # $argv is a Fish variable.
-    # shellcheck disable=SC2016
-    run_fish -c 'source $argv[1]; and fisher update' "$installer"
+    # Fisher does not overwrite its own files when it does not own them, such
+    # as a copy made by hand. Move them aside, and put them back if Fisher fails.
+    fisher_dir="$(run_fish -c 'set -q fisher_path; or set fisher_path $__fish_config_dir
+        echo $fisher_path')"
+    for file in "$fisher_dir/functions/fisher.fish" "$fisher_dir/completions/fisher.fish"; do
+        [ ! -f "$file" ] || mv "$file" "$file.dotfiles-old"
+    done
+    run_fish -c 'source $argv[1]; and fisher update' "$installer" || true
+    for file in "$fisher_dir/functions/fisher.fish" "$fisher_dir/completions/fisher.fish"; do
+        [ -f "$file.dotfiles-old" ] || continue
+        if [ -f "$file" ]; then
+            rm -f "$file.dotfiles-old"
+        else
+            mv "$file.dotfiles-old" "$file"
+        fi
+    done
 fi
 
 # Fisher exits 0 when a plugin download fails, so check the result.

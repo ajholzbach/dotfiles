@@ -1,5 +1,7 @@
 # dotfiles
 
+![Test](https://github.com/ajholzbach/dotfiles/actions/workflows/test.yml/badge.svg)
+
 Shell and tool configurations managed with [chezmoi](https://www.chezmoi.io/).
 
 ![Sample command line](assets/sample_command_line.png)
@@ -26,7 +28,7 @@ See [docs/install.md](docs/install.md) for Windows and other install options.
 - Installs the latest stable [Starship](https://starship.rs/) when it is missing
 - Installs MesloLGS Nerd Font on Linux, and with Homebrew on macOS
 - Installs [Antidote](https://github.com/mattmc3/antidote) on Linux and macOS when zsh is present
-- Applies the included Catppuccin Mocha theme on Linux and macOS when Fish is present
+- Uses the [Catppuccin Mocha](https://catppuccin.com/palette/) theme wherever possible
 - Gives Claude Code and Codex the same agent instructions and installs RTK hooks when RTK is present
 - Creates a restore point before changing managed files
 
@@ -44,6 +46,7 @@ See [docs/install.md](docs/install.md) for Windows and other install options.
 | [zoxide](https://github.com/ajeetdsouza/zoxide), [fzf](https://github.com/junegunn/fzf), [mise](https://mise.jdx.dev/) | Shell integration |
 | [Ghostty](https://ghostty.org/), [Zed](https://zed.dev/) | Catppuccin Mocha and MesloLGS Nerd Font |
 | Vim, tmux, btop | Configuration and themes |
+| Other tools | Small configuration changes, such as the Catppuccin Mocha theme |
 
 Each integration activates only when its program is installed.
 
@@ -71,7 +74,7 @@ Apply keeps the blocks that other tools add to `~/.bash_profile` between `# >>> 
 - `home/.chezmoiscripts/` contains setup and restore-point scripts
 - `home/dot_config/mise/conf.d/10-dotfiles-tools.toml` lists the recommended tools
 - `docs/` contains the install, tools, and uninstall guides
-- `tests/` contains the Docker test suites
+- `tests/` contains the Docker test suites, which GitHub Actions runs on each push
 - `uninstall.sh` and `uninstall.ps1` restore the pre-install state
 
 ## Docs

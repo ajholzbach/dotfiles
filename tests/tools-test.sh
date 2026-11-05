@@ -246,6 +246,20 @@ else
     fail "A tools script needed root or did not run"
 fi
 
+log "Replacing Fisher with a copy that Fisher does not own..."
+fish -c 'set -U _fisher_plugins (string match -v jorgebucaran/fisher $_fisher_plugins)
+    set -e -U _fisher_jorgebucaran_2F_fisher_files'
+chezmoi state delete-bucket --bucket=entryState
+fisher_file="$HOME/.config/fish/functions/fisher.fish"
+if adopt_output="$(chezmoi apply 2>&1)" &&
+        fish -c 'contains jorgebucaran/fisher $_fisher_plugins' &&
+        [ -f "$fisher_file" ] && [ -z "$(find "$HOME/.config/fish" -name "*.dotfiles-old")" ]; then
+    ok "Fisher takes ownership of a fisher.fish that it did not install"
+else
+    echo "$adopt_output"
+    fail "Fisher did not take ownership of an existing fisher.fish"
+fi
+
 if managed_diff="$(chezmoi diff --exclude=scripts)" && [ -z "$managed_diff" ]; then
     ok "Managed files are unchanged after Fisher and mise run"
 else
