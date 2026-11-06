@@ -7,4 +7,5 @@
 {{- with (index . "kube") -}}
 {{-   $_ := set $data "kube" . -}}
 {{- end -}}
-{{ dict "data" $data | toToml }}
+{{- /* Scripts that run on every apply would otherwise always show in diff */ -}}
+{{ dict "data" $data "diff" (dict "exclude" (list "scripts")) | toToml }}
