@@ -1,6 +1,6 @@
 r"""Xonsh rc, portable across macOS, Linux, and Windows.
 
-Install / rebuild / add packages: see the Xonsh section in the repo README.
+Install / rebuild / add packages: see docs/tools.md in the repo.
 """
 
 import os

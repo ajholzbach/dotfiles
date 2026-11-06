@@ -77,7 +77,7 @@ set writebackup
 " Mouse & clipboard
 set mouse=a
 if has('clipboard')
-  set clipboard+=unnamedplus
+  set clipboard^=unnamed,unnamedplus
 endif
 
 " Statusline
