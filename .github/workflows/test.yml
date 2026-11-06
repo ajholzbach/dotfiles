@@ -39,5 +39,5 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - run: sh -c "$(curl --proto '=https' --tlsv1.2 -fsSL https://get.chezmoi.io/lb)"
-      - run: PATH="$HOME/.local/bin:$PATH" ./tests/macos-test.sh
+      - run: sh -c "$(curl --proto '=https' --tlsv1.2 -fsSL https://get.chezmoi.io/lb)" -- -b "$HOME/.local/bin"
+      - run: ./tests/macos-test.sh

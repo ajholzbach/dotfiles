@@ -42,6 +42,8 @@ cp -p "$HOME/.bashrc" "$HOME/.bash_profile" "$LOGS/original/"
 echo '== first apply'
 run apply1 chezmoi init --apply --promptBool tools=true
 check 'first apply succeeds' test "$?" -eq 0
+# The other checks mean nothing without a first apply.
+[ "$failed" -eq 0 ] || exit 1
 check 'restore point holds the original .bashrc' \
     grep -Fqx .bashrc "$STATE/backups/$(cat "$STATE/current-backup")/existing-files.txt"
 check 'Starship installed into ~/.local/bin' "$HOME/.local/bin/starship" --version
