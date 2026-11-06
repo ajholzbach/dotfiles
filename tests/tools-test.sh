@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests the recommended tools install on a bare Ubuntu or Arch system.
+# Tests the recommended tools install on a bare Ubuntu or Arch system
 set -euo pipefail
 
 source /dotfiles/tests/lib/testlib.sh
@@ -7,8 +7,7 @@ source /dotfiles/tests/lib/testlib.sh
 SOURCE=/dotfiles/home
 PROMPT=tools
 
-# Each target of the tools install. Each renders only when tools is true on
-# Linux or macOS.
+# Targets that render only when tools is true on Linux or macOS
 TOOL_TARGETS=(
     .chezmoiscripts/run_onchange_after_15-mise-bootstrap.sh.tmpl
     .chezmoiscripts/run_onchange_after_36-install-fisher.sh.tmpl
@@ -16,18 +15,18 @@ TOOL_TARGETS=(
 )
 MISE_CONFIG=.config/mise/conf.d/10-dotfiles-tools.toml
 
-# source_template DATA TEMPLATE: render TEMPLATE from the source with DATA.
+# source_template DATA TEMPLATE: render TEMPLATE from the source with DATA
 source_template() {
     chezmoi execute-template --source "$SOURCE" --override-data "$1" "$2"
 }
 
-# render DATA FILE: render a source file with DATA.
+# render DATA FILE: render a source file with DATA
 render() {
     chezmoi execute-template --source "$SOURCE" --override-data "$1" \
         --file "$SOURCE/$2"
 }
 
-# query TEMPLATE: evaluate TEMPLATE against the applied source and config.
+# query TEMPLATE: evaluate TEMPLATE against the applied source and config
 query() {
     chezmoi execute-template "$1"
 }
@@ -35,12 +34,12 @@ query() {
 fixture="$(mktemp -d)"
 trap 'rm -rf "$fixture"' EXIT
 
-# mock_dir: print a new directory for mock commands.
+# mock_dir: print a new directory for mock commands
 mock_dir() {
     mktemp -d -p "$fixture"
 }
 
-# mock DIR NAME LINE...: write an executable shell script DIR/NAME.
+# mock DIR NAME LINE...: write an executable shell script DIR/NAME
 mock() {
     local dir="$1" name="$2"
     shift 2
@@ -85,7 +84,7 @@ done
 log "Checking the chezmoi config template..."
 config_template="$SOURCE/.chezmoi.toml.tmpl"
 
-# init_config FILE ARG...: render the config template to FILE with no TTY.
+# init_config FILE ARG...: render the config template to FILE with no TTY
 init_config() {
     local file="$1"
     shift
@@ -93,7 +92,7 @@ init_config() {
         < /dev/null > "$file"
 }
 
-# config_value FILE TEMPLATE: evaluate TEMPLATE with the config in FILE.
+# config_value FILE TEMPLATE: evaluate TEMPLATE with the config in FILE
 config_value() {
     chezmoi --config "$1" execute-template "$2"
 }
@@ -144,7 +143,7 @@ for os in linux darwin; do
     fi
 done
 
-# A mise without bootstrap stops the apply with a recovery hint.
+# A mise without bootstrap stops the apply with a recovery hint
 mock "$mocks" mise '[ "$1" = --version ] && echo 2024.1.0' 'exit 2'
 if ! mock_output="$(HOME="$mocks" PATH="$mocks:$PATH" sh "$mocks/install.sh" 2>&1)" &&
         grep -Fq 'has no bootstrap command' <<< "$mock_output" &&
@@ -173,7 +172,7 @@ mapfile -t expected_packages < <(
 )
 [ "${#expected_packages[@]}" -gt 0 ] || fail "No packages to check in $mise_config"
 
-# installed MANAGER PACKAGE: succeed when MANAGER reports PACKAGE as installed.
+# installed MANAGER PACKAGE: succeed when MANAGER reports PACKAGE as installed
 installed() {
     case "$1" in
         apt) dpkg-query -W -f='${Status}\n' "$2" 2>/dev/null | grep -q ' installed$' ;;
@@ -183,7 +182,7 @@ installed() {
     esac
 }
 
-# check_packages SUFFIX: check every package from the mise config.
+# check_packages SUFFIX: check every package from the mise config
 check_packages() {
     local entry manager package
     for entry in "${expected_packages[@]}"; do
@@ -219,13 +218,13 @@ else
 fi
 
 log "Running every tools script again without root..."
-# tool_scripts: print the run_onchange_ tool scripts that chezmoi would run.
+# tool_scripts: print the run_onchange_ tool scripts that chezmoi would run
 tool_scripts() {
     chezmoi status --include=scripts 2>/dev/null |
         grep -E '(15-mise-bootstrap|36-install-fisher)' || true
 }
 
-# chezmoi records run_onchange_ scripts in entryState.
+# chezmoi records run_onchange_ scripts in entryState
 chezmoi state delete-bucket --bucket=entryState
 pending="$(tool_scripts)"
 if grep -Fq 15-mise-bootstrap.sh <<< "$pending" &&
@@ -236,7 +235,7 @@ else
     fail "Clearing the script state did not queue the tools scripts"
 fi
 
-# A sudo that always fails proves each script finds its work already done.
+# A sudo that always fails proves each script finds its work already done
 mocks="$(mock_dir)"
 mock "$mocks" sudo 'echo "unexpected sudo $*" >&2' 'exit 1'
 if rerun_output="$(PATH="$mocks:$PATH" chezmoi apply 2>&1)" && [ -z "$(tool_scripts)" ]; then

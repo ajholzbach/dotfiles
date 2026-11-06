@@ -30,7 +30,7 @@ On Linux, mise uses `sudo` only to install missing packages. The setup runs agai
 On other systems, install the tools manually. After installing Fisher, sync the tracked plugin list with:
 
 ```fish
-fisher_setup
+fisher update
 ```
 
 ## After installation

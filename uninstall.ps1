@@ -103,7 +103,7 @@ try {
     throw "Invalid PowerShell profile restore manifest: $($_.Exception.Message)"
 }
 
-# Keep in sync with home/.chezmoitemplates/powershell-profile-paths.ps1.
+# Keep in sync with home/.chezmoitemplates/powershell-profile-paths.ps1
 $documents = [Environment]::GetFolderPath([Environment+SpecialFolder]::MyDocuments)
 if ([string]::IsNullOrWhiteSpace($documents)) {
     $documents = Join-Path $HOME 'Documents'
@@ -158,7 +158,7 @@ if (-not $Yes) {
     }
 }
 
-# Validate every source and destination before changing any user files.
+# Validate every source and destination before changing any user files
 foreach ($relativePath in $managed) {
     $target = Join-Path $HOME $relativePath
     if (Test-RealDirectory -Path $target) {

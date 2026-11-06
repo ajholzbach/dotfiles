@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-# shellcheck disable=SC2034 # Not every script uses the state directory.
+# shellcheck disable=SC2034 # Not every script uses the state directory
 STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
 installer=''
 
@@ -20,7 +20,7 @@ find_tool() {
     return 1
 }
 
-# download_installer URL: download URL to a temporary file named by $installer.
+# download_installer URL: download URL to a temporary file named by $installer
 download_installer() {
     [ -z "$installer" ] || rm -f "$installer"
     installer="$(mktemp)"

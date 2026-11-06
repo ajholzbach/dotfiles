@@ -2,38 +2,31 @@ if [ -z "${XDG_CONFIG_HOME:-}" ]; then
     export XDG_CONFIG_HOME="$HOME/.config"
 fi
 
-# These files are managed at fixed ~/.config paths. Respect explicit
-# overrides while keeping them discoverable when XDG_CONFIG_HOME is custom.
+# The managed configs stay in ~/.config even when XDG_CONFIG_HOME is custom
 export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$HOME/.config/starship.toml}"
 export BAT_CONFIG_PATH="${BAT_CONFIG_PATH:-$HOME/.config/bat/config}"
 export COPYFILE_DISABLE="${COPYFILE_DISABLE:-1}"
+# fzf fails on every call when this file is missing
+if [ -z "${FZF_DEFAULT_OPTS_FILE:-}" ] && [ -r "$HOME/.config/fzf/fzfrc" ]; then
+    export FZF_DEFAULT_OPTS_FILE="$HOME/.config/fzf/fzfrc"
+fi
 
-for user_bin in "$HOME/.local/bin" "$HOME/bin"; do
-    [ -d "$user_bin" ] || continue
-    case ":${PATH:-}:" in
-        *":$user_bin:"*) ;;
-        *) PATH="$user_bin${PATH:+:$PATH}" ;;
-    esac
+# Always prepend, because path_helper moves inherited entries after /usr/bin
+for user_bin in "$HOME/bin" "$HOME/.local/bin"; do
+    [ -d "$user_bin" ] && PATH="$user_bin${PATH:+:$PATH}"
 done
 unset user_bin
 export PATH
 
-# Discover Homebrew without installing it or assuming a particular platform.
-for brew_bin in \
-    /opt/homebrew/bin/brew \
-    /usr/local/bin/brew \
-    /home/linuxbrew/.linuxbrew/bin/brew; do
-    if [ -x "$brew_bin" ]; then
-        if brew_environment="$("$brew_bin" shellenv 2>/dev/null)"; then
-            eval "$brew_environment"
-            export HOMEBREW_DOWNLOAD_CONCURRENCY="${HOMEBREW_DOWNLOAD_CONCURRENCY:-auto}"
-            unset brew_environment
-            break
-        fi
-        unset brew_environment
+for brew_prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew; do
+    if [ -x "$brew_prefix/bin/brew" ]; then
+        export HOMEBREW_PREFIX="$brew_prefix"
+        export HOMEBREW_DOWNLOAD_CONCURRENCY="${HOMEBREW_DOWNLOAD_CONCURRENCY:-auto}"
+        PATH="$brew_prefix/bin:$brew_prefix/sbin${PATH:+:$PATH}"
+        break
     fi
 done
-unset brew_bin
+unset brew_prefix
 
 export CONDA_AUTO_ACTIVATE_BASE="${CONDA_AUTO_ACTIVATE_BASE:-false}"
 

@@ -11,31 +11,31 @@ scripts=/dotfiles/home/.chezmoiscripts
 
 sha() { sha256sum "$1" | cut -d ' ' -f 1; }
 
-# full_mode: succeed in the suites that install the optional shells and tools.
+# full_mode: succeed in the suites that install the optional shells and tools
 full_mode() { [ "$TEST_MODE" != minimal ]; }
 
-# check MESSAGE COMMAND...: pass when COMMAND succeeds. Its output is hidden.
+# check MESSAGE COMMAND...: pass when COMMAND succeeds, with its output hidden
 check() {
     local message="$1"
     shift
     if "$@" >/dev/null 2>&1; then ok "$message"; else fail "$message"; fi
 }
 
-# render SCRIPT OS: print a chezmoi script template rendered for OS.
+# render SCRIPT OS: print a chezmoi script template rendered for OS
 render() {
     chezmoi execute-template --source /dotfiles/home \
         --override-data "{\"chezmoi\":{\"os\":\"$2\"},\"tools\":true}" \
         --file "$scripts/$1"
 }
 
-# stub DIR NAME LINE...: write the executable shell script DIR/NAME.
+# stub DIR NAME LINE...: write the executable shell script DIR/NAME
 stub() {
     mkdir -p "$1"
     printf '%s\n' '#!/bin/sh' "${@:3}" > "$1/$2"
     chmod +x "$1/$2"
 }
 
-# restore_point_fixture DIR: create DIR/home with a one-file restore point.
+# restore_point_fixture DIR: create DIR/home with a one-file restore point
 restore_point_fixture() {
     local state="$1/home/.local/state/dotfiles"
     mkdir -p "$state/backups/fixture/files"
@@ -44,7 +44,7 @@ restore_point_fixture() {
     printf '%s\n' fixture > "$state/current-backup"
 }
 
-# fixture_uninstall DIR [VAR=VALUE...]: run uninstall.sh in the DIR fixture.
+# fixture_uninstall DIR [VAR=VALUE...]: run uninstall.sh in the DIR fixture
 fixture_uninstall() {
     env HOME="$1/home" XDG_STATE_HOME="$1/home/.local/state" "${@:2}" \
         sh /dotfiles/uninstall.sh --yes --keep-chezmoi
@@ -85,7 +85,7 @@ font_dir="$(mktemp -d)"
 mkdir -p "$font_dir/Library/Fonts"
 stub "$font_dir/bin" brew 'printf "%s\n" "$*" >> "$HOME/brew.log"'
 render run_after_17-install-font-macos.sh.tmpl darwin > "$font_dir/font.sh"
-# brew_calls PATH: run the font script with PATH and print its brew calls.
+# brew_calls PATH: run the font script with PATH and print its brew calls
 brew_calls() {
     rm -f "$font_dir/brew.log"
     HOME="$font_dir" PATH="$1" sh "$font_dir/font.sh" >/dev/null || { echo failed; return; }
@@ -105,9 +105,9 @@ rm -rf "$font_dir"
 
 log "Checking that installers leave existing installations alone..."
 fixture="$(mktemp -d)"
-render run_before_12-install-starship.sh.tmpl linux > "$fixture/starship.sh"
+render run_after_12-install-starship.sh.tmpl linux > "$fixture/starship.sh"
 render run_after_16-install-antidote.sh.tmpl linux > "$fixture/antidote.sh"
-# The Antidote script only needs zsh on PATH. Git and curl stay off PATH.
+# Keep Git and curl off PATH, because the Antidote script needs only zsh
 stub "$fixture/bin" zsh 'exit 0'
 run_installer() {
     env HOME="$2" XDG_STATE_HOME="$2/state" PATH="$fixture/bin" /bin/sh "$fixture/$1"
@@ -176,6 +176,39 @@ if full_mode; then
     }
     check "Uninstall restores legacy Fish colors and frozen theme, then deletes the state" \
         restored_legacy_theme
+
+    log "Checking the Fish universal variable cleanup..."
+    restore_point_fixture "$fixture/universals"
+    universals_home="$fixture/universals/home"
+    fish_in_fixture() {
+        env HOME="$universals_home" XDG_CONFIG_HOME="$universals_home/.config" fish -c "$1"
+    }
+    render run_once_after_37-clean-fish-universals.sh.tmpl linux > "$fixture/clean-universals.sh"
+    # shellcheck disable=SC2016 # Expanded by Fish
+    fish_in_fixture 'set -Ux FZF_DEFAULT_OPTS "--a \"b c\""; set -U fish_color_command blue --bold
+        set -U fish_pager_color_progress; set -U OTHER_UNIVERSAL 1'
+    # shellcheck disable=SC2016 # Expanded by Fish
+    universals_cleaned() {
+        env HOME="$universals_home" XDG_STATE_HOME="$universals_home/.local/state" \
+            sh "$fixture/clean-universals.sh" >/dev/null &&
+            fish_in_fixture 'set -qU OTHER_UNIVERSAL
+                and not set -qU FZF_DEFAULT_OPTS; and not set -qU fish_color_command
+                and not set -qU fish_pager_color_progress' &&
+            [ -s "$universals_home/.local/state/dotfiles/fish-universals-restore.fish" ]
+    }
+    check "Fish cleanup erases the stale universal variables and keeps the others" \
+        universals_cleaned
+    # shellcheck disable=SC2016 # Expanded by Fish
+    universals_restored() {
+        fixture_uninstall "$fixture/universals" >/dev/null &&
+            fish_in_fixture 'contains FZF_DEFAULT_OPTS (set -nUx)
+                and test "$FZF_DEFAULT_OPTS" = "--a \"b c\""
+                and test "$fish_color_command" = "blue --bold"
+                and set -qU fish_pager_color_progress' &&
+            [ ! -e "$universals_home/.local/state/dotfiles/fish-universals-restore.fish" ]
+    }
+    check "Uninstall restores the Fish universal variables that the cleanup erased" \
+        universals_restored
 fi
 rm -rf "$fixture"
 
@@ -211,12 +244,12 @@ printf '%s\n' '# original Codex rules' > "$HOME/.codex/AGENTS.md"
 chmod 0640 "$HOME/.bashrc"
 chmod 0600 "$HOME/.profile"
 ln -snf .bashrc "$HOME/.zprofile"
-# Another tool's marked block, which apply keeps, and an unmarked line.
+# Another tool's marked block, which apply keeps, and an unmarked line
 bash_profile_block="$(printf '%s\n' '# >>> other tool >>>' 'export OTHER_TOOL=1' '# <<< other tool <<<')"
 printf '%s\n' "$bash_profile_block" '# original bash_profile' > "$HOME/.bash_profile"
 
 declare -A original_sha original_mode
-# remember_original PATH: record the content and mode of ~/PATH.
+# remember_original PATH: record the content and mode of ~/PATH
 remember_original() {
     original_sha[$1]="$(sha "$HOME/$1")"
     original_mode[$1]="$(stat -c '%a' "$HOME/$1")"
@@ -272,7 +305,7 @@ assert_equal false "$(chezmoi execute-template '{{ .tools }}')" \
     "Default init enabled the tools install"
 
 font_files="$(chezmoi managed --include=files --path-style=relative | grep '^\.local/share/fonts/' || true)"
-# every_font CHECK: succeed when CHECK passes for every managed font path.
+# every_font CHECK: succeed when CHECK passes for every managed font path
 every_font() {
     local font
     [ -n "$font_files" ] || return 1
@@ -310,7 +343,7 @@ check "PowerShell profile initializes Starship" \
     grep -Fq 'starship init powershell' "$HOME/.config/powershell/profile.ps1"
 
 login_env=(env -i HOME="$HOME" USER="${USER:-testuser}" PATH="$system_path" XDG_CONFIG_HOME="$custom_xdg")
-# shellcheck disable=SC2016 # Expanded by the login shell.
+# shellcheck disable=SC2016 # Expanded by the login shell
 login_check='command -v starship &&
     test "$STARSHIP_CONFIG" = "$HOME/.config/starship.toml" &&
     test "$BAT_CONFIG_PATH" = "$HOME/.config/bat/config"'
@@ -369,22 +402,21 @@ else
 
     check "Fish configuration parses and starts without Fisher" \
         eval 'fish -n "$HOME/.config/fish/config.fish" && fish -ic exit'
-    check "Fish setup is available without installing Fisher or plugin functions" \
-        fish -ic 'functions -q fisher_setup
-            and not functions -q fisher
+    check "Fish starts without installing Fisher or plugin functions" \
+        fish -ic 'not functions -q fisher
             and not functions -q tarnow
             and not functions -q psmem
             and not functions -q wget'
-    # shellcheck disable=SC2016 # Expanded by Fish.
+    # shellcheck disable=SC2016 # Expanded by Fish
     check "Fish uses the fixed managed Starship and bat config paths" \
         fish -c 'test "$STARSHIP_CONFIG" = "$HOME/.config/starship.toml"
             and test (string join : $BAT_CONFIG_PATH) = "$HOME/.config/bat/config"'
-    # shellcheck disable=SC2016 # Expanded by Fish.
+    # shellcheck disable=SC2016 # Expanded by Fish
     check "Fish keeps the managed Starship config with a custom XDG_CONFIG_HOME" \
         env XDG_CONFIG_HOME="$custom_xdg" fish -c 'source "$HOME/.config/fish/config.fish"
             test "$STARSHIP_CONFIG" = "$HOME/.config/starship.toml"'
 
-    # copyfile_disable VALUE: Zsh and Fish end up with COPYFILE_DISABLE=VALUE.
+    # copyfile_disable VALUE: Zsh and Fish end up with COPYFILE_DISABLE=VALUE
     copyfile_disable() {
         local start=(env -u COPYFILE_DISABLE PATH="$system_path")
         [ "$1" = 1 ] || start=(env COPYFILE_DISABLE="$1" PATH="$system_path")
@@ -407,10 +439,10 @@ else
         'for index in 1 2 3 4 5 6 7 8 9 10 11 12; do' \
         '    printf "owner %d 0.0 %d.0 0 0 ? S 00:00 0:00 process%d\n" "$index" "$index" "$index"' \
         'done'
-    # shellcheck disable=SC2016 # Expanded by Zsh.
+    # shellcheck disable=SC2016 # Expanded by Zsh
     check "Zsh utility aliases select eza, resume wget, archive files, and sort memory" \
         env PATH="$mock_dir:$PATH" zsh -ic '
-            eza_flags="--color=always --group-directories-first --icons=always"
+            eza_flags="--group-directories-first --icons=auto"
             [[ "$(ls fixture)" == "$eza_flags fixture" ]] &&
             [[ "$(ll fixture)" == "-l $eza_flags fixture" ]] &&
             [[ "$(la fixture)" == "-a $eza_flags fixture" ]] &&
@@ -530,7 +562,7 @@ else
     fail "Original .zprofile symlink was not restored"
 fi
 
-# all_new_paths_removed: no path that was absent before install remains.
+# all_new_paths_removed: no path that was absent before install remains
 all_new_paths_removed() {
     local path
     while IFS= read -r path; do

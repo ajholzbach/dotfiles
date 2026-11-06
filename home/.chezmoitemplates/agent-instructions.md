@@ -16,6 +16,6 @@ Write everything in plain technical English that follows ASD-STE100. Be brief, a
 - Create PRs as drafts. Put the ticket tag at the end of the title, for example `feat(scope): description [PROJ-123]`.
 - In PR descriptions, use exactly `## What` and `## Why` unless the repository requires a template. Use one to three short bullets in each. In What, name the concrete changes. In Why, give the constraint that makes the change necessary. Do not restate What. Write for a reviewer who has not seen our chats. Leave out process, alternatives, test logs, and rollout notes. After the two sections, add only required attribution or hidden metadata.
 - A request to fix or address review feedback allows code changes only. It does not allow a reply or a thread change.
-{{- if lookPath "rtk" }}
+{{- if includeTemplate "tool-path" "rtk" }}
 - When you show me a command to run, leave out the `rtk` prefix.
 {{- end }}

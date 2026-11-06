@@ -1,8 +1,7 @@
 {{- if eq .chezmoi.os "windows" -}}
 $ErrorActionPreference = 'Stop'
 
-# Reconcile these small loader blocks on every apply so a recreated profile is
-# repaired without replacing any user-owned content around it.
+# Run on every apply to repair recreated profiles without touching user content
 {{ template "powershell-profile-paths.ps1" . }}
 $beginMarker = '# >>> dotfiles managed PowerShell profile >>>'
 $endMarker = '# <<< dotfiles managed PowerShell profile <<<'
@@ -44,7 +43,7 @@ $updates = foreach ($profilePath in $profilePaths) {
         $encoding = $profileText.Encoding
     }
 
-    # Every marker must be the first or last line of one complete block.
+    # Every marker must be the first or last line of one complete block
     $managedBlocks = [regex]::Matches($content, $blockPattern)
     if ([regex]::Matches($content, $markerPattern).Count -ne 2 * $managedBlocks.Count) {
         throw "Malformed managed PowerShell profile markers in $profilePath; restore or remove the partial marker before applying."
@@ -76,8 +75,7 @@ $updates = foreach ($profilePath in $profilePaths) {
     }
 }
 
-# Validate both profiles before modifying either one. This avoids a partial
-# update when the second profile contains a malformed marker block.
+# Validate both profiles before changing either one
 foreach ($update in $updates) {
     if ($update.Updated -ceq $update.Content) {
         continue
@@ -87,7 +85,7 @@ foreach ($update in $updates) {
     try {
         [IO.File]::WriteAllText($temporary, $update.Updated, $update.Encoding)
         if (Test-Path -LiteralPath $update.Path) {
-            # Replace keeps the attributes and access rules of the existing file.
+            # Replace keeps the attributes and access rules of the existing file
             [IO.File]::Replace($temporary, $update.Path, [NullString]::Value)
         } else {
             Move-Item -LiteralPath $temporary -Destination $update.Path

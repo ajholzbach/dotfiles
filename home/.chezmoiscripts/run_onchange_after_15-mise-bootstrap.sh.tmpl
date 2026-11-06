@@ -4,7 +4,6 @@
 MISE_PATH="$HOME/.local/bin/mise"
 {{- if eq .chezmoi.os "darwin" }}
 
-# The shell profiles put Homebrew on PATH only when the brew executable exists.
 if ! find_tool brew >/dev/null; then
     printf 'Installing Homebrew...\n'
     download_installer https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh

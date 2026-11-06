@@ -1,18 +1,11 @@
-# Set XDG_CONFIG_HOME
-if not set -q XDG_CONFIG_HOME
-    set -xg XDG_CONFIG_HOME $HOME/.config
-end
-
-if not set -q STARSHIP_CONFIG
-    set -xg STARSHIP_CONFIG $HOME/.config/starship.toml
-end
-
-if not set -q BAT_CONFIG_PATH
-    set -xg BAT_CONFIG_PATH $HOME/.config/bat/config
-end
-
-if not set -q COPYFILE_DISABLE
-    set -xg COPYFILE_DISABLE 1
+# The managed configs stay in ~/.config even when XDG_CONFIG_HOME is custom
+set -q XDG_CONFIG_HOME; or set -gx XDG_CONFIG_HOME $HOME/.config
+set -q STARSHIP_CONFIG; or set -gx STARSHIP_CONFIG $HOME/.config/starship.toml
+set -q BAT_CONFIG_PATH; or set -gx BAT_CONFIG_PATH $HOME/.config/bat/config
+set -q COPYFILE_DISABLE; or set -gx COPYFILE_DISABLE 1
+# fzf fails on every call when this file is missing
+if not set -q FZF_DEFAULT_OPTS_FILE; and test -r $HOME/.config/fzf/fzfrc
+    set -gx FZF_DEFAULT_OPTS_FILE $HOME/.config/fzf/fzfrc
 end
 
 # Per-machine env (untracked)
@@ -22,45 +15,36 @@ if not set -q DOTFILES_LOADING_LOCAL_ENV; and test -f $HOME/.config/local-env.fi
     set -e DOTFILES_LOADING_LOCAL_ENV
 end
 
-# Add to PATH
-test -d /usr/local/bin; and fish_add_path -g /usr/local/bin
-test -d $HOME/bin; and fish_add_path -g $HOME/bin
-test -d $HOME/.local/bin; and fish_add_path -g $HOME/.local/bin
+fish_add_path -g $HOME/.local/bin $HOME/bin /usr/local/bin
 
-# Add Homebrew to PATH if installed
 for brew_prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew
     if test -x $brew_prefix/bin/brew
+        set -gx HOMEBREW_PREFIX $brew_prefix
+        set -q HOMEBREW_DOWNLOAD_CONCURRENCY; or set -gx HOMEBREW_DOWNLOAD_CONCURRENCY auto
         fish_add_path -g $brew_prefix/bin $brew_prefix/sbin
-        set -q HOMEBREW_DOWNLOAD_CONCURRENCY; or set -xg HOMEBREW_DOWNLOAD_CONCURRENCY auto
+        break
     end
 end
 set -e brew_prefix
 
 if status is-interactive
-    # Silence fish's built-in welcome banner
     set -g fish_greeting ""
-    # Catppuccin Mocha, from themes/Catppuccin Mocha.theme. chezmoi writes the
-    # values here because `fish_config theme choose` adds 10 ms to startup.
+    # From themes/Catppuccin Mocha.theme, inlined because fish_config is slow
 {{- range include "dot_config/fish/themes/Catppuccin Mocha.theme" | splitList "\n" }}
 {{-   if hasPrefix "fish_" . }}
     set -g {{ . }}
 {{-   end }}
 {{- end }}
 
-    # starship.rs prompt
     if type -q starship
         starship init fish --print-full-init | source
         functions -q enable_transience; and enable_transience
+        # starship.toml has no right_format, so skip the second starship call per prompt
+        functions -e fish_right_prompt
     end
-    # mise shell integration
     if type -q mise
-        # Turn off auto-activation of mise environment to avoid double activation
-        if not set -q MISE_FISH_AUTO_ACTIVATE
-            set -gx MISE_FISH_AUTO_ACTIVATE 0
-        end
         mise activate fish | source
     end
-    # OrbStack shell integration
     if type -q orb
         source ~/.orbstack/shell/init2.fish 2>/dev/null || :
     end

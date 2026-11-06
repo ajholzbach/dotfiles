@@ -141,7 +141,7 @@ try {
     }
 
     $restoreTemplate = 'home/.chezmoiscripts/run_before_00-create-restore-point-windows.ps1.tmpl'
-    $starshipTemplate = 'home/.chezmoiscripts/run_before_12-install-starship-windows.ps1.tmpl'
+    $starshipTemplate = 'home/.chezmoiscripts/run_after_12-install-starship-windows.ps1.tmpl'
     $shimTemplate = 'home/.chezmoiscripts/run_after_25-install-powershell-profile-shims.ps1.tmpl'
 
     [void](Invoke-WindowsTemplate $restoreTemplate)

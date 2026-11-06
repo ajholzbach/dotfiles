@@ -1,8 +1,9 @@
-{{- if and (or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux")) (lookPath "rtk") -}}
+{{- $rtk := includeTemplate "tool-path" "rtk" -}}
+{{- if and (or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux")) $rtk -}}
 #!/usr/bin/env sh
 set -u
 
-RTK={{ lookPath "rtk" | quote }}
+RTK={{ $rtk | quote }}
 CODEX_AGENTS="$HOME/.codex/AGENTS.md"
 
 saved_agents="$(mktemp)"
@@ -21,7 +22,7 @@ else
     printf 'Warning: RTK hook setup for Codex failed. Run: rtk init -g --codex\n' >&2
 fi
 
-# Codex does not expand the @RTK.md reference that rtk appends to AGENTS.md.
+# Codex does not expand the @RTK.md reference that rtk appends to AGENTS.md
 [ -s "$saved_agents" ] && cp -p "$saved_agents" "$CODEX_AGENTS"
 exit 0
 {{- end }}

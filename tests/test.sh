@@ -50,16 +50,13 @@ trap 'exit 143' TERM
 
 mkdir -p "$STAGED_REPO"
 
-# Copy only version-controlled and non-ignored working-tree files that are part
-# of the install/test surface. This includes untracked work-in-progress files,
-# while deliberately excluding the host .git directory and ignored local data.
+# Stage tracked and untracked files that Git does not ignore, without .git
 while IFS= read -r -d '' relative_path; do
     source_path="$REPO_ROOT/$relative_path"
     destination_path="$STAGED_REPO/$relative_path"
 
     if [ ! -e "$source_path" ] && [ ! -L "$source_path" ]; then
-        # `git ls-files --cached` also reports tracked files deleted in the
-        # working tree. Their deletion must be reflected in the test snapshot.
+        # --cached also lists tracked files deleted from the working tree
         continue
     fi
 
@@ -77,9 +74,7 @@ while IFS= read -r -d '' relative_path; do
     esac
 
     mkdir -p "$(dirname "$destination_path")"
-    # Do not preserve host ACLs, extended attributes, ownership, or timestamps.
-    # Git records the file content, symlink target, and executable bit needed by
-    # the fixture without carrying that extra workstation metadata into Docker.
+    # Keep only what Git records, not host ACLs, xattrs, owners, or timestamps
     COPYFILE_DISABLE=1 cp -P "$source_path" "$destination_path"
 done < <(
     git -C "$REPO_ROOT" ls-files -z --cached --others --exclude-standard -- \
@@ -143,9 +138,8 @@ if [ -e "$STAGED_REPO/.git" ]; then
     exit 1
 fi
 
-# Chezmoi's documented init path expects a repository. Create a fresh local
-# repository using isolated Git configuration so no host hooks, signing setup,
-# credential helpers, identity variables, or other settings enter the fixture.
+# chezmoi init needs a repository. Use an isolated Git config so that no host
+# hooks, signing, credentials, or identity reach the fixture.
 fixture_git() {
     env -i \
         PATH='/usr/bin:/bin:/usr/sbin:/sbin' \

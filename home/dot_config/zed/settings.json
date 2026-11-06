@@ -1,16 +1,25 @@
 {
   "cli_default_open_behavior": "new_window",
   "outline_panel": {
-    "dock": "left"
+    "dock": "left",
   },
   "collaboration_panel": {
-    "dock": "left"
+    "dock": "left",
   },
   "git_panel": {
-    "dock": "left"
+    "dock": "left",
   },
   "agent": {
     "dock": "left",
+  },
+  "auto_install_extensions": {
+    "catppuccin": true,
+    "catppuccin-icons": true,
+    "dockerfile": true,
+    "git-firefly": true,
+    "html": true,
+    "terraform": true,
+    "toml": true,
   },
   "buffer_font_family": "MesloLGS Nerd Font",
   "buffer_font_size": 14,

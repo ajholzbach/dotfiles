@@ -1,5 +1,4 @@
-# Shared mise settings, tracked in chezmoi. Per-machine tools belong in
-# ~/.config/mise/config.toml; the dotfiles bootstrap does not require mise.
+# Put per-machine tools in ~/.config/mise/config.toml
 
 [settings]
 go_default_packages_file = "~/.config/mise/default-go-packages"

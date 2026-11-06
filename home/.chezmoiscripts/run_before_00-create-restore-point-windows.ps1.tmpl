@@ -39,7 +39,12 @@ function Copy-PathPreservingLink {
     }
 }
 
-$managed = @(& '{{ .chezmoi.executable | replace "'" "''" }}' managed --include=files,symlinks --path-style=relative)
+# Pass on the outer apply's paths, so a custom source or destination is used
+$destDir = '{{ .chezmoi.destDir | replace "'" "''" }}'
+$managed = @(& '{{ .chezmoi.executable | replace "'" "''" }}' `
+        --source '{{ .chezmoi.sourceDir | replace "'" "''" }}' `
+        --config '{{ .chezmoi.configFile | replace "'" "''" }}' `
+        --destination $destDir managed --include=files,symlinks --path-style=relative)
 if ($LASTEXITCODE -ne 0 -or $managed.Count -eq 0) {
     throw 'chezmoi returned no managed files; refusing to apply without a restore manifest.'
 }
@@ -51,7 +56,7 @@ foreach ($relativePath in $managed) {
     if (-not $currentManagedSet.Add($relativePath)) {
         throw "chezmoi returned a duplicate managed path: $relativePath"
     }
-    $target = Join-Path $HOME $relativePath
+    $target = Join-Path $destDir $relativePath
     if (Test-RealDirectory -Path $target) {
         throw "Refusing to replace a directory where a managed file or symlink is expected: $target"
     }
@@ -64,8 +69,7 @@ $savedExistingSet = [System.Collections.Generic.HashSet[string]]::new([StringCom
 $isNewBackup = -not (Test-Path -LiteralPath $currentBackup)
 if ($isNewBackup) {
     $backupId = '{0}-{1}' -f [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ'), $PID
-    # Build a new restore point in a staging directory and publish it only
-    # when it is complete.
+    # Build in a staging directory and publish only when complete
     $backupDir = Join-Path $backupsDir ".$backupId.tmp"
 } else {
     $backupId = [IO.File]::ReadAllText($currentBackup).Trim()
@@ -104,14 +108,13 @@ if ($isNewBackup) {
 }
 
 try {
-    # Back up every managed target that the restore point does not record yet.
-    # A target already in existing-files keeps its earlier, original backup.
+    # Back up only new targets, so each target keeps its original backup
     $addedCount = 0
     foreach ($relativePath in $managed) {
         if (-not $savedManagedSet.Add($relativePath)) {
             continue
         }
-        $target = Join-Path $HOME $relativePath
+        $target = Join-Path $destDir $relativePath
         if ((Test-Path -LiteralPath $target) -and $savedExistingSet.Add($relativePath)) {
             Copy-PathPreservingLink -Source $target -Destination (Join-Path (Join-Path $backupDir 'files') $relativePath)
             $savedExisting.Add($relativePath)

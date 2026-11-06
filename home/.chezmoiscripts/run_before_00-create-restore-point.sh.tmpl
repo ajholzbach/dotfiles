@@ -26,17 +26,23 @@ fi
 current="$backup_dir/.current-managed.$$"
 next_managed="$backup_dir/.managed-files.$$"
 next_existing="$backup_dir/.existing-files.$$"
-trap 'rm -f "$current" "$next_managed" "$next_existing"' EXIT
+new_paths="$backup_dir/.new-managed.$$"
+trap 'rm -f "$current" "$next_managed" "$next_existing" "$new_paths"' EXIT
 
-{{ .chezmoi.executable | quote }} managed --include=files,symlinks --path-style=relative > "$current"
+# Pass on the outer apply's paths, so a custom source or destination is used
+DEST_DIR={{ .chezmoi.destDir | quote }}
+{{ .chezmoi.executable | quote }} --source {{ .chezmoi.sourceDir | quote }} \
+    --config {{ .chezmoi.configFile | quote }} --destination "$DEST_DIR" \
+    managed --include=files,symlinks --path-style=relative > "$current"
 [ -s "$current" ] || die "chezmoi returned no managed files; refusing to apply without a restore point."
 cp -p "$backup_dir/managed-files.txt" "$next_managed"
 cp -p "$backup_dir/existing-files.txt" "$next_existing"
+# FILENAME, not NR == FNR, because the saved list is empty on the first apply
+awk 'FILENAME == ARGV[1] { seen[$0] = 1; next } !($0 in seen)' "$next_managed" "$current" > "$new_paths"
 
 added=0
 while IFS= read -r relative_path; do
-    grep -Fqx -e "$relative_path" "$next_managed" && continue
-    target="$HOME/$relative_path"
+    target="$DEST_DIR/$relative_path"
     if [ -d "$target" ] && [ ! -L "$target" ]; then
         die "refusing to replace a directory where chezmoi expects a file: $target"
     fi
@@ -48,7 +54,7 @@ while IFS= read -r relative_path; do
     fi
     printf '%s\n' "$relative_path" >> "$next_managed"
     added=$((added + 1))
-done < "$current"
+done < "$new_paths"
 
 # Move the existing-file manifest first. An interrupted apply then leaves a
 # managed path unrecorded, and the next apply captures it again.

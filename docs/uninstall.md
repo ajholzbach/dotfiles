@@ -5,13 +5,13 @@ Uninstall restores the files from the restore point and removes the font, Starsh
 Preview the restore:
 
 ```sh
-sh "$(chezmoi source-path)/uninstall.sh" --dry-run
+sh "$(chezmoi source-path)/../uninstall.sh" --dry-run
 ```
 
 Restore the pre-install state:
 
 ```sh
-sh "$(chezmoi source-path)/uninstall.sh" --yes
+sh "$(chezmoi source-path)/../uninstall.sh" --yes
 ```
 
 Use `--keep-chezmoi` to preserve the local chezmoi source and metadata.
@@ -19,7 +19,7 @@ Use `--keep-chezmoi` to preserve the local chezmoi source and metadata.
 On Windows:
 
 ```powershell
-$uninstall = Join-Path (chezmoi source-path) 'uninstall.ps1'
+$uninstall = Join-Path (chezmoi source-path) '..\uninstall.ps1'
 & $uninstall -DryRun
 & $uninstall -Yes
 ```

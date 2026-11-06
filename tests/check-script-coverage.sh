@@ -68,7 +68,7 @@ while IFS=$'\t' read -r script_path suites unexpected; do
 
     old_ifs="$IFS"
     IFS=','
-    # Intentional word splitting validates each comma-delimited suite.
+    # Intentional word splitting validates each comma-delimited suite
     set -- $suites
     IFS="$old_ifs"
     if [ "$#" -eq 0 ]; then

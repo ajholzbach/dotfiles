@@ -1,0 +1,9 @@
+{{- /* Print the path of the tool named by ., like find_tool in common.sh. Use
+     it so a PATH without Homebrew does not change the rendered output. */ -}}
+{{- $path := lookPath . -}}
+{{- range list (printf "/opt/homebrew/bin/%s" .) (printf "/usr/local/bin/%s" .) -}}
+{{-   if and (not $path) (stat .) -}}
+{{-     $path = . -}}
+{{-   end -}}
+{{- end -}}
+{{- $path -}}

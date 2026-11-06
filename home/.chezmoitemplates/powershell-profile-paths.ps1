@@ -1,4 +1,4 @@
-# uninstall.ps1 keeps a copy of these paths because it runs after chezmoi purge.
+# uninstall.ps1 keeps a copy of these paths because it runs after chezmoi purge
 $documents = [Environment]::GetFolderPath([Environment+SpecialFolder]::MyDocuments)
 if ([string]::IsNullOrWhiteSpace($documents)) {
     $documents = Join-Path $HOME 'Documents'

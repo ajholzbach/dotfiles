@@ -1,5 +1,4 @@
 " Core
-set nocompatible
 set encoding=utf-8
 filetype plugin indent on
 syntax on
@@ -41,9 +40,6 @@ set ignorecase
 set smartcase
 set hlsearch
 nnoremap <C-L> :nohlsearch<CR><C-L>
-if exists('&inccommand')
-  set inccommand=split
-endif
 
 " Command line
 set wildmenu

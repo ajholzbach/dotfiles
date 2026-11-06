@@ -1,7 +1,5 @@
 # OMZ git aliases (path:lib useful bits are inlined in .zshrc)
-getantidote/use-omz
 ohmyzsh/ohmyzsh path:plugins/git kind:defer
 
-# Zsh plugins
 zsh-users/zsh-autosuggestions
 zsh-users/zsh-syntax-highlighting

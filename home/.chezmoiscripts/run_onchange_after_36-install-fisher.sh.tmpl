@@ -1,6 +1,6 @@
 {{- if and (index . "tools") (ne .chezmoi.os "windows") -}}
 {{ template "tools-script.sh" . }}
-# Run again when the plugin list changes or Fish appears on PATH: {{ lookPath "fish" }}
+# Run again when the plugin list changes or Fish is installed: {{ ne (includeTemplate "tool-path" "fish") "" }}
 PLUGINS='{{ include "dot_config/fish/fish_plugins" | trim }}'
 
 if ! fish_bin="$(find_tool fish)"; then
@@ -13,15 +13,15 @@ run_fish() {
 }
 
 # Fisher keeps exactly the plugins in fish_plugins, including itself.
-# shellcheck disable=SC2016 # The single-quoted variables are Fish variables.
+# shellcheck disable=SC2016 # Fish expands these variables
 if run_fish -c 'contains jorgebucaran/fisher $_fisher_plugins'; then
     printf 'Syncing Fish plugins with Fisher...\n'
     run_fish -c 'fisher update'
 else
     printf 'Installing Fisher and the Fish plugins...\n'
     download_installer https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish
-    # Fisher does not overwrite its own files when it does not own them, such
-    # as a copy made by hand. Move them aside, and put them back if Fisher fails.
+    # Fisher does not overwrite copies of itself that it does not own, so move
+    # them aside and put them back if Fisher fails.
     fisher_dir="$(run_fish -c 'set -q fisher_path; or set fisher_path $__fish_config_dir
         echo $fisher_path')"
     for file in "$fisher_dir/functions/fisher.fish" "$fisher_dir/completions/fisher.fish"; do
@@ -38,7 +38,7 @@ else
     done
 fi
 
-# Fisher exits 0 when a plugin download fails, so check the result.
+# Fisher exits 0 when a plugin download fails, so check the result
 installed="$(run_fish -c 'fisher list')"
 for plugin in $PLUGINS; do
     printf '%s\n' "$installed" | grep -Fqx -e "$plugin" || \

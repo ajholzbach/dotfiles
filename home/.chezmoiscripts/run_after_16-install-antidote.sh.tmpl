@@ -21,7 +21,7 @@ trap 'rm -rf "$staging"' EXIT
 printf 'Installing the latest Antidote...\n'
 git clone --quiet --depth=1 https://github.com/mattmc3/antidote.git "$staging"
 mkdir -p "$STATE_ROOT"
-# Uninstall removes Antidote only while its checkout is still at this commit.
+# Uninstall removes Antidote only while its checkout is still at this commit
 git -C "$staging" rev-parse HEAD > "$INSTALL_MARKER"
 mv "$staging" "$ANTIDOTE_PATH"
 {{- end }}

@@ -1,3 +1,8 @@
 {{- if not (and (index . "tools") (ne .chezmoi.os "windows")) }}
 .config/mise/conf.d/10-dotfiles-tools.toml
 {{- end }}
+{{- if eq .chezmoi.os "windows" }}
+.chezmoiscripts/*.sh
+{{- else }}
+.chezmoiscripts/*.ps1
+{{- end }}

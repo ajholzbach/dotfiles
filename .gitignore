@@ -2,13 +2,12 @@
 .DS_Store
 /temp/
 
-# Machine-local environment files may contain credentials. Keep both ordinary
-# and chezmoi private_ source names out of Git and Docker test fixtures.
+# Local env files may hold credentials
 home/**/*local-env.sh
 home/**/*local-env.fish
 home/**/*local-env.ps1
 
-# Generated Fish files if they are ever re-added from the destination state.
+# Generated Fish files
 home/dot_config/fish/completions/*
 home/dot_config/fish/conf.d/*
 home/dot_config/fish/fish_history
@@ -17,5 +16,5 @@ home/dot_config/fish/functions/*
 home/dot_config/fish/generated_completions/*
 home/dot_config/fish/themes/*
 
-!home/dot_config/fish/functions/fisher_setup.fish
+!home/dot_config/fish/conf.d/mise-activate.fish
 !home/dot_config/fish/themes/Catppuccin Mocha.theme

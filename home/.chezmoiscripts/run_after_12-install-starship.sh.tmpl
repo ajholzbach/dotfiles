@@ -21,7 +21,7 @@ if ! "$STARSHIP_PATH" --version >/dev/null 2>&1; then
 fi
 
 mkdir -p "$STATE_ROOT"
-# Uninstall removes Starship only while it still has this checksum.
+# Uninstall removes Starship only while it still has this checksum
 { sha256sum "$STARSHIP_PATH" 2>/dev/null || shasum -a 256 "$STARSHIP_PATH"; } |
     cut -d ' ' -f 1 > "$INSTALL_MARKER"
 {{- end }}

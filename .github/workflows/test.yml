@@ -5,8 +5,7 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-  # The suites install the latest upstream releases, so run weekly to catch
-  # upstream changes between pushes.
+  # Catch breaking upstream releases between pushes
   schedule:
     - cron: "0 6 * * 1"
 

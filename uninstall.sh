@@ -89,7 +89,7 @@ if [ "$ASSUME_YES" -ne 1 ]; then
     esac
 fi
 
-# Validate every path before changing any of them.
+# Validate every path before changing any of them
 while IFS= read -r relative_path; do
     validate_relative_path "$relative_path"
 
@@ -117,7 +117,7 @@ printf '%s\n' "$backup_id" > "$snapshot_dir/restore-point-id"
 cp -p "$managed_manifest" "$snapshot_dir/managed-files.txt"
 cp -p "$existing_manifest" "$snapshot_dir/originally-existing-files.txt"
 
-# Preserve the current managed state so post-install edits remain recoverable.
+# Preserve the current managed state so post-install edits remain recoverable
 while IFS= read -r relative_path; do
     target="$HOME/$relative_path"
     if [ -e "$target" ] || [ -L "$target" ]; then
@@ -128,21 +128,34 @@ while IFS= read -r relative_path; do
     fi
 done < "$managed_manifest"
 
-# Older versions saved the Fish theme to universal variables. Restore them
-# before removing files, and stop if that fails.
-fish_theme_restore="$STATE_ROOT/fish-theme-restore.fish"
-fish_frozen_theme_restore="$STATE_ROOT/fish-frozen-theme-restore.fish"
-if [ -f "$fish_theme_restore" ]; then
-    fish_variables="$HOME/.config/fish/fish_variables"
-    [ ! -f "$fish_variables" ] || cp -p "$fish_variables" "$snapshot_dir/fish_variables"
-    # $argv is a Fish variable.
-    # shellcheck disable=SC2016
+# restore_fish_universals FILE: run the set -U lines in FILE, or stop
+restore_fish_universals() {
+    # shellcheck disable=SC2016 # Fish expands $argv
     if ! command -v fish >/dev/null 2>&1 || \
             ! DOTFILES_LOADING_LOCAL_ENV=1 XDG_CONFIG_HOME="$HOME/.config" \
-                fish -c 'source $argv[1]' "$fish_theme_restore" >/dev/null 2>&1; then
-        echo "Error: the old Fish theme state could not be restored. Install or repair Fish, then rerun this command." >&2
+                fish -c 'source $argv[1]' "$1" >/dev/null 2>&1; then
+        echo "Error: the old Fish state could not be restored. Install or repair Fish, then rerun this command." >&2
         exit 1
     fi
+}
+
+# Restore the Fish universal variables before removing files. Run the
+# cleanup script's save first, so the older theme save wins for colors.
+fish_universals_restore="$STATE_ROOT/fish-universals-restore.fish"
+fish_theme_restore="$STATE_ROOT/fish-theme-restore.fish"
+fish_frozen_theme_restore="$STATE_ROOT/fish-frozen-theme-restore.fish"
+fish_variables="$HOME/.config/fish/fish_variables"
+if [ -f "$fish_variables" ] && { [ -f "$fish_universals_restore" ] || [ -f "$fish_theme_restore" ]; }; then
+    cp -p "$fish_variables" "$snapshot_dir/fish_variables"
+fi
+if [ -f "$fish_universals_restore" ]; then
+    restore_fish_universals "$fish_universals_restore"
+    rm -f "$fish_universals_restore"
+    echo "Restored the Fish universal variables from before these dotfiles"
+fi
+# Older versions saved the Fish theme to universal variables
+if [ -f "$fish_theme_restore" ]; then
+    restore_fish_universals "$fish_theme_restore"
     if [ -f "$fish_frozen_theme_restore" ]; then
         mkdir -p "$HOME/.config/fish/conf.d"
         cp -p "$fish_frozen_theme_restore" "$HOME/.config/fish/conf.d/fish_frozen_theme.fish"

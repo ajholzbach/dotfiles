@@ -42,7 +42,7 @@ cp -p "$HOME/.bashrc" "$HOME/.bash_profile" "$LOGS/original/"
 echo '== first apply'
 run apply1 chezmoi init --apply --promptBool tools=true
 check 'first apply succeeds' test "$?" -eq 0
-# The other checks mean nothing without a first apply.
+# The other checks mean nothing without a first apply
 [ "$failed" -eq 0 ] || exit 1
 check 'restore point holds the original .bashrc' \
     grep -Fqx .bashrc "$STATE/backups/$(cat "$STATE/current-backup")/existing-files.txt"
@@ -66,9 +66,12 @@ echo '== second apply'
 run apply2 chezmoi apply
 check 'second apply succeeds' test "$?" -eq 0
 check 'managed files match the source' test -z "$(chezmoi diff --exclude=scripts)"
+check 'second apply leaves no install script pending' \
+    sh -c "! chezmoi status --include=scripts | grep -E '15-mise-bootstrap|36-install-fisher'"
 
 echo '== uninstall'
-run uninstall sh "$SOURCE/uninstall.sh" --yes
+# The command from docs/uninstall.md
+run uninstall sh "$(chezmoi source-path)/../uninstall.sh" --yes
 check 'uninstall succeeds' test "$?" -eq 0
 check '.bashrc restored' cmp "$LOGS/original/.bashrc" "$HOME/.bashrc"
 check '.bash_profile restored' cmp "$LOGS/original/.bash_profile" "$HOME/.bash_profile"
