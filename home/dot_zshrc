@@ -14,7 +14,7 @@ fi
 typeset -U path fpath
 [[ -n ${HOMEBREW_PREFIX:-} ]] && fpath=("$HOMEBREW_PREFIX/share/zsh/site-functions" $fpath)
 
-# History and completion (inlined from OMZ path:lib)
+# History and completion settings from OMZ lib
 HISTFILE=${HISTFILE:-${ZDOTDIR:-$HOME}/.zsh_history}
 # hist_expire_dups_first needs HISTSIZE above SAVEHIST
 HISTSIZE=60000
@@ -104,7 +104,7 @@ if [ -z "${PNPM_HOME:-}" ]; then
 fi
 [[ -n ${PNPM_HOME:-} ]] && path=("$PNPM_HOME" $path)
 
-# Per-machine env (untracked)
+# Load the untracked per-machine environment file
 if [ -z "${DOTFILES_LOADING_LOCAL_ENV:-}" ] && [ -f "$HOME/.config/local-env.sh" ]; then
     DOTFILES_LOADING_LOCAL_ENV=1
     source "$HOME/.config/local-env.sh"
@@ -132,12 +132,6 @@ if (( $+commands[eza] )); then
     alias lt='eza -aT --group-directories-first --icons=auto'
 fi
 
-alias wget='wget -c'
-alias tarnow='tar -acf'
-alias untar='tar -xvf'
-alias psmem='ps aux | { IFS= read -r _dotfiles_ps_header; print -r -- "$_dotfiles_ps_header"; sort -nrk 4; }'
-alias psmem10='ps aux | { IFS= read -r _dotfiles_ps_header; print -r -- "$_dotfiles_ps_header"; sort -nrk 4 | head -n 10; }'
-
 if (( $+commands[fzf] )); then
     if _dotfiles_fzf_init="$(fzf --zsh 2>/dev/null)"; then
         eval "$_dotfiles_fzf_init"
@@ -152,17 +146,19 @@ fi
 
 if (( $+commands[starship] )); then
     eval "$(starship init zsh)"
-    # starship.toml has no right_format, so skip the second starship call per prompt
+    # starship.toml has no right_format, but the right prompt still runs starship
+    # Clear the right prompt
     RPROMPT=''
 fi
 
-# For the OMZ git plugin aliases, which expect this OMZ lib function
+# The OMZ git plugin aliases expect this OMZ lib function
 git_current_branch() {
     command git symbolic-ref --quiet --short HEAD 2>/dev/null ||
         command git rev-parse --short HEAD 2>/dev/null
 }
 
-# Keep Antidote last so zsh-syntax-highlighting wraps every widget
+# zsh-syntax-highlighting must wrap every widget
+# Load Antidote last
 if [ -f "$HOME/.antidote/antidote.zsh" ]; then
     # Rebuild the cached bundle only when the plugin list changes
     _dotfiles_plugins_txt="${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
@@ -171,7 +167,7 @@ if [ -f "$HOME/.antidote/antidote.zsh" ]; then
         mkdir -p "${_dotfiles_plugins_bundle:h}"
         source "$HOME/.antidote/antidote.zsh"
         zstyle ':antidote:bundle:*' zcompile yes
-        # Defer only the load, without rerunning prompt hooks or redrawing the prompt
+        # Defer only the plugin load, and skip the prompt hooks and redraw
         zstyle ':antidote:bundle:*' defer-options '-a'
         _dotfiles_plugins_tmp="${_dotfiles_plugins_bundle}.tmp.$$"
         if antidote bundle < "$_dotfiles_plugins_txt" > "$_dotfiles_plugins_tmp" && \

@@ -1,4 +1,5 @@
-# OMZ git aliases (path:lib useful bits are inlined in .zshrc)
+# .zshrc defines the OMZ lib functions that the aliases need
+# Load the OMZ git aliases
 ohmyzsh/ohmyzsh path:plugins/git kind:defer
 
 zsh-users/zsh-autosuggestions

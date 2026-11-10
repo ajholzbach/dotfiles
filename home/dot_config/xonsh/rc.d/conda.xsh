@@ -42,13 +42,13 @@ def _find_conda():
 
 
 def _build_conda_integration(conda_root, conda_bin):
-    # Closure-capture state so it survives the `del` at module bottom and
-    # the FuncAlias wrapper's signature rewriting
+    # The module deletes its globals, and FuncAlias rewrites signatures
+    # Keep the conda state in closures
     envs_dir = os.path.join(conda_root, 'envs')
 
     def register_completer():
-        # Replace conda's `import conda`-based completer, which fails inside
-        # xonsh's uv tool env
+        # conda's completer imports conda, which fails in xonsh's uv tool env
+        # Replace conda's completer
         def _conda_completer(prefix, line, start, end, ctx, _envs_dir=envs_dir):
             args = line.split(' ')
             if not args or args[0] != 'conda':
@@ -90,9 +90,8 @@ def _build_conda_integration(conda_root, conda_bin):
             aliases['conda'] = lazy_conda
             return result.returncode or 1
         hook = result.stdout
-        # Strip the trailing `conda activate 'base'`. Inside this function's
-        # scope, the `$CONDA_EXE = ...` lines earlier in the hook don't reach
-        # the activate call in time and conda errors out
+        # conda activate fails when it runs inside this function
+        # Drop the final conda activate line from the hook
         lines = hook.strip().splitlines()
         if lines and lines[-1].strip().startswith('conda activate'):
             lines = lines[:-1]
@@ -101,7 +100,8 @@ def _build_conda_integration(conda_root, conda_bin):
         except Exception:
             aliases['conda'] = lazy_conda
             return 1
-        # The hook installed its own broken completer; restore ours
+        # The hook replaced the completer with a broken one
+        # Register this completer again
         register_completer()
         real_conda = aliases.get('conda')
         if real_conda is None or real_conda is lazy_conda:
@@ -115,7 +115,8 @@ def _build_conda_integration(conda_root, conda_bin):
 _conda_root, _conda = _find_conda()
 
 if _conda_root is not None:
-    # Append (not prepend); the hook prepends condabin/ when it loads later
+    # The conda hook prepends condabin when conda loads
+    # Append condabin to PATH
     _condabin = os.path.join(_conda_root, 'condabin')
     if _condabin not in $PATH:
         $PATH.append(_condabin)

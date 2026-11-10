@@ -117,7 +117,8 @@ printf '%s\n' "$backup_id" > "$snapshot_dir/restore-point-id"
 cp -p "$managed_manifest" "$snapshot_dir/managed-files.txt"
 cp -p "$existing_manifest" "$snapshot_dir/originally-existing-files.txt"
 
-# Preserve the current managed state so post-install edits remain recoverable
+# Edits made after install stay recoverable
+# Snapshot the current managed files
 while IFS= read -r relative_path; do
     target="$HOME/$relative_path"
     if [ -e "$target" ] || [ -L "$target" ]; then
@@ -139,8 +140,8 @@ restore_fish_universals() {
     fi
 }
 
-# Restore the Fish universal variables before removing files. Run the
-# cleanup script's save first, so the older theme save wins for colors.
+# The older theme save must win for the colors
+# Restore the cleanup save, then the older theme save, before removing files
 fish_universals_restore="$STATE_ROOT/fish-universals-restore.fish"
 fish_theme_restore="$STATE_ROOT/fish-theme-restore.fish"
 fish_frozen_theme_restore="$STATE_ROOT/fish-frozen-theme-restore.fish"
@@ -165,6 +166,23 @@ if [ -f "$fish_theme_restore" ]; then
     echo "Restored the Fish colors from before these dotfiles"
 fi
 
+# Restore the files that the Fish cleanup moved, unless a newer file exists
+fish_files_backup="$STATE_ROOT/fish-files-backup"
+if [ -d "$fish_files_backup" ]; then
+    (cd "$fish_files_backup" && find . ! -type d) | while IFS= read -r relative_path; do
+        relative_path="${relative_path#./}"
+        validate_relative_path "$relative_path"
+        target="$HOME/.config/fish/$relative_path"
+        if [ -e "$target" ] || [ -L "$target" ]; then
+            continue
+        fi
+        mkdir -p "$(dirname "$target")"
+        cp -pP "$fish_files_backup/$relative_path" "$target"
+        echo "Restored ~/.config/fish/$relative_path"
+    done
+    rm -rf "$fish_files_backup"
+fi
+
 while IFS= read -r relative_path; do
     target="$HOME/$relative_path"
     rm -f "$target"
@@ -179,11 +197,12 @@ while IFS= read -r relative_path; do
     fi
 done < "$managed_manifest"
 
-# Remove Starship and Antidote only when they are still exactly as the
-# dotfiles installed them. Older markers also hold other lines.
+# Remove Starship and Antidote only when they did not change after install
 starship_marker="$STATE_ROOT/starship-installed-by-dotfiles"
 starship_path="$HOME/.local/bin/starship"
 if [ -f "$starship_marker" ]; then
+    # Older markers hold other lines too
+    # Read the checksum line from the marker
     recorded="$(grep -Em 1 '^[0-9a-f]{64}$' "$starship_marker" || true)"
     current="$({ sha256sum "$starship_path" 2>/dev/null || shasum -a 256 "$starship_path" 2>/dev/null; } | cut -d ' ' -f 1)"
     if [ -n "$recorded" ] && [ "$recorded" = "$current" ]; then

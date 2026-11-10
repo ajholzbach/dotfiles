@@ -4,9 +4,7 @@ umask 077
 
 CURRENT_BACKUP="$STATE_ROOT/current-backup"
 
-# The restore point holds the union of every path this repository has
-# managed. This script runs before every apply, so a path added by a later
-# repository update is captured before chezmoi first changes it.
+# Add newly managed paths to the first restore point on every apply
 if [ -f "$CURRENT_BACKUP" ]; then
     backup_id="$(sed -n '1p' "$CURRENT_BACKUP")"
     case "$backup_id" in
@@ -29,7 +27,8 @@ next_existing="$backup_dir/.existing-files.$$"
 new_paths="$backup_dir/.new-managed.$$"
 trap 'rm -f "$current" "$next_managed" "$next_existing" "$new_paths"' EXIT
 
-# Pass on the outer apply's paths, so a custom source or destination is used
+# A custom source, config, or destination must apply here too
+# Pass the outer apply's paths to this chezmoi
 DEST_DIR={{ .chezmoi.destDir | quote }}
 {{ .chezmoi.executable | quote }} --source {{ .chezmoi.sourceDir | quote }} \
     --config {{ .chezmoi.configFile | quote }} --destination "$DEST_DIR" \
@@ -37,7 +36,8 @@ DEST_DIR={{ .chezmoi.destDir | quote }}
 [ -s "$current" ] || die "chezmoi returned no managed files; refusing to apply without a restore point."
 cp -p "$backup_dir/managed-files.txt" "$next_managed"
 cp -p "$backup_dir/existing-files.txt" "$next_existing"
-# FILENAME, not NR == FNR, because the saved list is empty on the first apply
+# NR == FNR fails when the saved list is empty
+# Test FILENAME, not NR == FNR
 awk 'FILENAME == ARGV[1] { seen[$0] = 1; next } !($0 in seen)' "$next_managed" "$current" > "$new_paths"
 
 added=0
@@ -56,8 +56,8 @@ while IFS= read -r relative_path; do
     added=$((added + 1))
 done < "$new_paths"
 
-# Move the existing-file manifest first. An interrupted apply then leaves a
-# managed path unrecorded, and the next apply captures it again.
+# After an interruption, the next apply saves any path this run missed
+# Move existing-files into place before managed-files
 mv "$next_existing" "$backup_dir/existing-files.txt"
 mv "$next_managed" "$backup_dir/managed-files.txt"
 

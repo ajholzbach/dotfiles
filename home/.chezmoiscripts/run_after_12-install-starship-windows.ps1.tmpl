@@ -3,8 +3,9 @@ $ErrorActionPreference = 'Stop'
 {{ template "powershell-state.ps1" . }}
 $starshipVersionPattern = '(?m)^starship (?<Version>(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)(?:\s|$)'
 
-# Invoke-Native NAME ARGUMENTS: run a command and throw when it fails. Check $?
-# too because PowerShell shims such as scoop do not always set $LASTEXITCODE.
+# Invoke-Native NAME ARGUMENTS: run a command and throw when it fails
+# Shims such as scoop may not set $LASTEXITCODE
+# Check $? as well as $LASTEXITCODE
 function Invoke-Native {
     param([string]$Name, [string[]]$Arguments)
 
@@ -53,8 +54,8 @@ if (Get-Command winget -ErrorAction SilentlyContinue) {
 Write-Host "Installing Starship with $manager..."
 Invoke-Native $manager $installArguments
 
-# Record ownership immediately after a successful package operation. If PATH
-# refresh or version validation fails, uninstall can still remove the package.
+# uninstall must remove the package even when a check fails
+# Write the ownership marker before the checks below
 $marker = Join-Path $stateRoot 'starship-installed-by-dotfiles'
 Write-StateFile $marker (@{ Manager = $manager } | ConvertTo-Json -Compress)
 

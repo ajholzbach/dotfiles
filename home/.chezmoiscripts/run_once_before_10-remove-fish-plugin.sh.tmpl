@@ -1,0 +1,22 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+{{ template "common.sh" . }}
+
+if ! fish_bin="$(find_tool fish)"; then
+    exit 0
+fi
+
+# chezmoi now writes the files that the ajholzbach/fish plugin installed
+# fisher update deletes the files of a plugin that leaves fish_plugins
+# Delete the plugin files, and remove the plugin from Fisher's records
+# shellcheck disable=SC2016 # Fish expands these variables
+DOTFILES_LOADING_LOCAL_ENV=1 XDG_CONFIG_HOME="$HOME/.config" "$fish_bin" -c '
+    set -l plugin ajholzbach/fish
+    contains -- $plugin $_fisher_plugins; or exit 0
+    set -l var _fisher_(string escape --style=var -- $plugin)_files
+    # psmem now takes a count, and chezmoi does not write psmem10.fish
+    # Also delete psmem10.fish
+    command rm -f (string replace -r "^~" $HOME -- $$var) $__fish_config_dir/functions/psmem10.fish
+    set -eU $var
+    set -U _fisher_plugins (string match -v -- $plugin $_fisher_plugins)
+    echo "Removed the Fisher plugin $plugin"'
+{{- end }}

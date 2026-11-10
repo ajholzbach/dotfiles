@@ -1,13 +1,13 @@
-# A bare system with passwordless sudo, so the tools install has work to do.
-# Git is present only because the test repository uses a file:// clone.
+# The tools install needs packages left to install
+# Start from a bare system with sudo
+# Install git only for the file:// clone of the test repository
 ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# On Arch, disable pacman's package sandbox in pacman.conf. The sandbox is
-# incompatible with amd64 emulation in some Docker runtimes, and the tools
-# install runs pacman without the --disable-sandbox flag.
+# The tools install runs pacman without --disable-sandbox
+# On Arch, disable the pacman sandbox in pacman.conf
 RUN if command -v apt-get >/dev/null; then \
         apt-get update && \
         apt-get install -y ca-certificates curl git sudo && \

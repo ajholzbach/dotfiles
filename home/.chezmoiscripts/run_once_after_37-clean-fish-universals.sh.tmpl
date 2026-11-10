@@ -6,9 +6,7 @@ if ! fish_bin="$(find_tool fish)"; then
     exit 0
 fi
 
-# Older versions of these dotfiles left these universal variables behind.
-# FZF_DEFAULT_OPTS overrides fzfrc, and config.fish now sets the colors as
-# globals. Save the values first for uninstall.
+# Save and erase universals from older dotfiles that override current settings
 RESTORE="$STATE_ROOT/fish-universals-restore.fish"
 mkdir -p "$STATE_ROOT"
 saved="$(mktemp "$STATE_ROOT/.fish-universals.XXXXXX")"
@@ -26,7 +24,8 @@ DOTFILES_LOADING_LOCAL_ENV=1 XDG_CONFIG_HOME="$HOME/.config" "$fish_bin" -c '
         set -eU $name
     end' > "$saved" || fish_status=$?
 
-# Keep earlier saves last, so uninstall ends with the oldest values
+# The oldest values must win when uninstall runs these lines
+# Append the older saves after the new ones
 if [ -s "$saved" ]; then
     [ ! -f "$RESTORE" ] || cat "$RESTORE" >> "$saved"
     mv "$saved" "$RESTORE"

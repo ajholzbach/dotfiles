@@ -7,7 +7,7 @@ source /dotfiles/tests/lib/testlib.sh
 SOURCE=/dotfiles/home
 PROMPT=tools
 
-# Targets that render only when tools is true on Linux or macOS
+# These targets render only when tools is true on Linux or macOS
 TOOL_TARGETS=(
     .chezmoiscripts/run_onchange_after_15-mise-bootstrap.sh.tmpl
     .chezmoiscripts/run_onchange_after_36-install-fisher.sh.tmpl
@@ -162,8 +162,8 @@ if ! apply_output="$(chezmoi --use-builtin-git=true init --apply \
 fi
 ok "chezmoi init --apply with tools succeeded"
 
-# Read the expected packages from the mise config now, because uninstall
-# removes it. Each entry is MANAGER PACKAGE.
+# uninstall removes the mise config
+# Read the expected packages from the mise config now
 mise_config="$HOME/$MISE_CONFIG"
 manager="$(command -v apt-get >/dev/null && echo apt || echo pacman)"
 mapfile -t expected_packages < <(

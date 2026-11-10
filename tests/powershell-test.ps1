@@ -176,8 +176,7 @@ try {
     $sharedPowerShellProfile = Join-Path $HOME '.config/powershell/profile.ps1'
     Assert-True (Test-Path -LiteralPath $sharedPowerShellProfile -PathType Leaf) 'Shared PowerShell profile is managed on every platform'
 
-    # A run_before restore script must add future source targets to the same
-    # original restore point before chezmoi can overwrite them.
+    # Test that a late target goes into the first restore point
     $lateTarget = Join-Path $HOME '.late-managed-fixture'
     $lateOriginal = "late target before it became managed`n"
     [IO.File]::WriteAllText($lateTarget, $lateOriginal, [Text.UTF8Encoding]::new($false))
@@ -270,8 +269,7 @@ esac
     Assert-True (-not (Test-Path -LiteralPath $mockLog)) 'A valid user-installed Starship skips package installation'
     Remove-Item -LiteralPath (Join-Path $mockBin 'starship') -Force
 
-    # Exercise the Scoop fallback in an isolated state directory, then use
-    # winget for the end-to-end install/uninstall ownership path.
+    # Test the Scoop fallback in its own state, then test winget end to end
     $mainStateHome = $env:XDG_STATE_HOME
     $scoopStateHome = Join-Path $HOME '.dotfiles-test-scoop-state'
     $wingetPath = Join-Path $mockBin 'winget'
@@ -359,8 +357,7 @@ esac
     Assert-Equal $originalModernHash (Get-Sha256 $modernProfile) 'Conservative uninstall restores the original PowerShell profile'
     Assert-Equal 'SymbolicLink' ((Get-Item -LiteralPath $zprofile -Force).LinkType) 'Conservative uninstall restores the original symbolic-link type'
 
-    # Start a fresh install cycle to exercise successful package-manager
-    # removal independently from the conservative changed-version path.
+    # Start a new install to test package removal apart from the changed version
     Remove-Item -LiteralPath (Join-Path $mockBin 'starship') -Force
     [void](Invoke-WindowsTemplate $restoreTemplate)
     $retryBackupId = [IO.File]::ReadAllText($currentBackup).Trim()

@@ -8,7 +8,7 @@ if not set -q FZF_DEFAULT_OPTS_FILE; and test -r $HOME/.config/fzf/fzfrc
     set -gx FZF_DEFAULT_OPTS_FILE $HOME/.config/fzf/fzfrc
 end
 
-# Per-machine env (untracked)
+# Load the untracked per-machine environment file
 if not set -q DOTFILES_LOADING_LOCAL_ENV; and test -f $HOME/.config/local-env.fish
     set -g DOTFILES_LOADING_LOCAL_ENV 1
     source $HOME/.config/local-env.fish
@@ -29,17 +29,33 @@ set -e brew_prefix
 
 if status is-interactive
     set -g fish_greeting ""
-    # From themes/Catppuccin Mocha.theme, inlined because fish_config is slow
+    # fish_config is too slow to load the theme at startup
+    # chezmoi copies each color line from themes/Catppuccin Mocha.theme here
 {{- range include "dot_config/fish/themes/Catppuccin Mocha.theme" | splitList "\n" }}
 {{-   if hasPrefix "fish_" . }}
     set -g {{ . }}
 {{-   end }}
 {{- end }}
 
-    if type -q starship
-        starship init fish --print-full-init | source
+    if set -l starship (command -s starship)
+        # starship init prints the same script each time, but takes 7 ms
+        # Save the script to a cache file, and source the cache file next time
+        set -l cache $__fish_user_data_dir/starship-init.fish
+        # The first cache line records the starship path and modified time
+        # Rebuild the cache when either value changes, for example on upgrade
+        set -l key "# $starship "(path mtime $starship)
+        set -l line
+        test -f $cache; and read line <$cache
+        if test "$line" != "$key"; and set -l init ($starship init fish --print-full-init)
+            mkdir -p $__fish_user_data_dir
+            # Another shell can start while this shell writes the cache
+            # Write a temp file, then rename the temp file to the cache file
+            printf '%s\n' $key $init >$cache.$fish_pid; and mv $cache.$fish_pid $cache
+        end
+        test -f $cache; and source $cache
         functions -q enable_transience; and enable_transience
-        # starship.toml has no right_format, so skip the second starship call per prompt
+        # starship.toml has no right_format, but the right prompt still runs starship
+        # Remove the right prompt
         functions -e fish_right_prompt
     end
     if type -q mise

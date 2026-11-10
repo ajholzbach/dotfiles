@@ -33,8 +33,8 @@ RUN test -n "$CHEZMOI_INSTALLER_CACHE_BUST" && \
     sh /tmp/get-chezmoi.sh -b /home/testuser/.local/bin && \
     rm -f /tmp/get-chezmoi.sh
 
-# xonsh smoke-test dependency. Minimal install (ptk extras + catppuccin theme) so
-# rc.xsh's $XONSH_COLOR_STYLE = 'catppuccin-mocha' resolves without warnings
+# rc.xsh warns when the catppuccin-mocha style is missing
+# Install ptk and the catppuccin theme for rc.xsh
 RUN python3 -m pip install --user --break-system-packages \
     'xonsh[ptk]' \
     'catppuccin[pygments]'

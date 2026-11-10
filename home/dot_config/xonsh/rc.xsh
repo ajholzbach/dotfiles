@@ -11,7 +11,7 @@ $XDG_CONFIG_HOME = ${...}.get('XDG_CONFIG_HOME', f'{$HOME}/.config')
 $STARSHIP_CONFIG = ${...}.get('STARSHIP_CONFIG', f'{$HOME}/.config/starship.toml')
 $BAT_CONFIG_PATH = ${...}.get('BAT_CONFIG_PATH', f'{$HOME}/.config/bat/config')
 
-# Per-machine env (untracked); source-bash reads the POSIX form
+# Load the untracked per-machine environment file
 if os.path.isfile(f'{$HOME}/.config/local-env.sh'):
     source-bash @(f'{$HOME}/.config/local-env.sh')
 
@@ -20,7 +20,7 @@ for _user_bin in (f'{$HOME}/bin', f'{$HOME}/.local/bin'):
         $PATH.insert(0, _user_bin)
 del _user_bin
 
-# /usr/local/bin doesn't exist on Windows
+# Add /usr/local/bin to PATH, except on Windows
 if sys.platform != 'win32' and '/usr/local/bin' not in $PATH:
     $PATH.insert(0, '/usr/local/bin')
 
@@ -46,16 +46,18 @@ del _setup_homebrew
 $XONSH_HISTORY_BACKEND = 'sqlite'
 $ENABLE_ASYNC_PROMPT = True
 $XONSH_COLOR_STYLE = 'catppuccin-mocha'
-# Force 24-bit color; PTK otherwise falls back to 256 and quantizes Catppuccin hexes
+# PTK rounds the Catppuccin colors to 256 colors by default
+# Use 24-bit color
 $PROMPT_TOOLKIT_COLOR_DEPTH = 'DEPTH_24_BIT'
 
-# catppuccin-mocha doesn't define xonsh's Color.* (LS_COLORS path coloring) or
-# PTK.* (widget) tokens, so map them onto the Catppuccin palette here
+# The catppuccin-mocha style does not define these tokens
+# Map the Color.* and PTK.* tokens to the Catppuccin palette
 $XONSH_STYLE_OVERRIDES = {
-    # Command validity: Name.Builtin = resolved, Error = unresolved
+    # Color valid commands blue and unknown commands red
     'Token.Name.Builtin': '#89b4fa noitalic',
     'Token.Error': '#f38ba8 bold',
-    # LS_COLORS primitives. xonsh builds combined tokens (BACKGROUND_BLACK__YELLOW etc.) on demand
+    # xonsh builds the combined tokens from the base tokens
+    # Set the base LS_COLORS tokens
     'Token.Color.BLACK':         '#45475a',
     'Token.Color.RED':           '#f38ba8',
     'Token.Color.GREEN':         '#a6e3a1',
@@ -90,10 +92,8 @@ if $XONSH_INTERACTIVE:
     $AUTO_CD = True
     $UPDATE_OS_ENVIRON = True
 
-    # Re-apply Color.* overrides on on_post_init. xonsh's style_name setter
-    # runs the LS_COLORS loop at init with muddy defaults, and $XONSH_STYLE_OVERRIDES
-    # never re-touches trap. We re-override, drop stale Color.* entries, clear the
-    # CompoundColorMap cache, then rebuild the LS_COLORS loop using our primitives
+    # xonsh init resets the Color.* tokens to its defaults
+    # Apply the style overrides again after init
     from xonsh.events import events
 
     @events.on_post_init

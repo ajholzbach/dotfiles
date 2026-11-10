@@ -2,7 +2,7 @@ if [ -f "$HOME/.profile" ]; then
     source "$HOME/.profile"
 fi
 
-# Per-machine env (untracked)
+# Load the untracked per-machine environment file
 if [ -z "${DOTFILES_LOADING_LOCAL_ENV:-}" ] && [ -f "$HOME/.config/local-env.sh" ]; then
     DOTFILES_LOADING_LOCAL_ENV=1
     source "$HOME/.config/local-env.sh"

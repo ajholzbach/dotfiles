@@ -62,8 +62,9 @@ function Copy-PathPreservingLink {
     }
 }
 
-# Invoke-Native NAME ARGUMENTS: run a command and throw when it fails. Check $?
-# too because PowerShell shims such as scoop do not always set $LASTEXITCODE.
+# Invoke-Native NAME ARGUMENTS: run a command and throw when it fails
+# Shims such as scoop may not set $LASTEXITCODE
+# Check $? as well as $LASTEXITCODE
 function Invoke-Native {
     param([string]$Name, [string[]]$Arguments)
 
@@ -243,8 +244,8 @@ if (Test-Path -LiteralPath $starshipMarker) {
         $manager = [string]$markerRecord.Manager
         $expectedVersion = [string]$markerRecord.Version
     } catch {
-        # Backward compatibility for early restore points that stored only the
-        # package-manager name on the first line.
+        # Early restore points store only the manager name
+        # Use the whole text as the manager name
         $manager = $markerText
     }
 
@@ -285,8 +286,8 @@ if ($starshipRemovalError) {
     throw "$starshipRemovalError The dotfiles were restored, but the Starship ownership marker and current restore point were kept so removal can be retried."
 }
 
-# Retire this restore point after using it. A later reinstall must capture the
-# user's then-current files instead of silently reusing a stale baseline.
+# A later install must save the current files again
+# Retire this restore point
 $lastRestoredBackup = Join-Path $stateRoot 'last-restored-backup'
 $lastRestoredTemporary = "$lastRestoredBackup.$PID.tmp"
 try {

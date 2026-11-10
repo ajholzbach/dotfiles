@@ -107,7 +107,8 @@ log "Checking that installers leave existing installations alone..."
 fixture="$(mktemp -d)"
 render run_after_12-install-starship.sh.tmpl linux > "$fixture/starship.sh"
 render run_after_16-install-antidote.sh.tmpl linux > "$fixture/antidote.sh"
-# Keep Git and curl off PATH, because the Antidote script needs only zsh
+# The Antidote script needs only zsh
+# Put only a zsh stub on PATH
 stub "$fixture/bin" zsh 'exit 0'
 run_installer() {
     env HOME="$2" XDG_STATE_HOME="$2/state" PATH="$fixture/bin" /bin/sh "$fixture/$1"
@@ -209,6 +210,70 @@ if full_mode; then
     }
     check "Uninstall restores the Fish universal variables that the cleanup erased" \
         universals_restored
+
+    log "Checking the Fish file cleanup..."
+    restore_point_fixture "$fixture/files"
+    files_home="$fixture/files/home"
+    files_fish="$files_home/.config/fish"
+    mkdir -p "$files_fish/completions" "$files_fish/conf.d"
+    render run_once_after_35-clean-fish-files.sh.tmpl linux > "$fixture/clean-files.sh"
+    for name in bat chezmoi rg; do
+        printf '%s\n' '# generated' > "$files_fish/completions/$name.fish"
+    done
+    ln -s missing "$files_fish/completions/kubectl.fish.pre-fisher-backup"
+    frozen="$files_fish/conf.d/fish_frozen_key_bindings.fish"
+    frozen_header='# This file was created by fish when upgrading to version 4.3, to migrate'
+    printf '%s\n' "$frozen_header" '# set --global fish_key_bindings fish_default_key_bindings' \
+        'set --erase --universal fish_key_bindings' > "$frozen"
+    fish_files_cleaned() {
+        env HOME="$files_home" sh "$fixture/clean-files.sh" >/dev/null &&
+            [ -f "$files_fish/completions/bat.fish" ] &&
+            [ ! -e "$files_fish/completions/chezmoi.fish" ] &&
+            [ ! -e "$files_fish/completions/rg.fish" ] &&
+            [ ! -L "$files_fish/completions/kubectl.fish.pre-fisher-backup" ] &&
+            [ ! -e "$frozen" ]
+    }
+    check "Fish cleanup removes stale completions and keeps the managed ones" \
+        fish_files_cleaned
+    custom_bindings_kept() {
+        printf '%s\n' "$frozen_header" 'set --global fish_key_bindings fish_vi_key_bindings' > "$frozen" &&
+            env HOME="$files_home" sh "$fixture/clean-files.sh" >/dev/null &&
+            [ -f "$frozen" ]
+    }
+    check "Fish cleanup keeps frozen key bindings that are not the default" \
+        custom_bindings_kept
+    fish_files_restored() {
+        fixture_uninstall "$fixture/files" >/dev/null &&
+            [ "$(cat "$files_fish/completions/chezmoi.fish")" = '# generated' ] &&
+            [ -L "$files_fish/completions/kubectl.fish.pre-fisher-backup" ] &&
+            [ ! -e "$files_home/.local/state/dotfiles/fish-files-backup" ]
+    }
+    check "Uninstall restores the Fish files that the cleanup moved" \
+        fish_files_restored
+
+    log "Checking the Fish plugin removal..."
+    plugin_home="$fixture/plugin/home"
+    mkdir -p "$plugin_home/.config/fish/functions"
+    render run_once_before_10-remove-fish-plugin.sh.tmpl linux > "$fixture/remove-plugin.sh"
+    for name in psmem10 ls; do
+        printf '%s\n' '# plugin' > "$plugin_home/.config/fish/functions/$name.fish"
+    done
+    # shellcheck disable=SC2016 # Expanded by Fish
+    env HOME="$plugin_home" XDG_CONFIG_HOME="$plugin_home/.config" fish -c '
+        set -U _fisher_plugins jorgebucaran/fisher ajholzbach/fish ajholzbach/fish-git
+        set -U _fisher_ajholzbach_2F_fish_files "~/.config/fish/functions/ls.fish"'
+    # shellcheck disable=SC2016 # Expanded by Fish
+    fish_plugin_removed() {
+        env HOME="$plugin_home" sh "$fixture/remove-plugin.sh" >/dev/null &&
+            env HOME="$plugin_home" sh "$fixture/remove-plugin.sh" >/dev/null &&
+            [ ! -e "$plugin_home/.config/fish/functions/ls.fish" ] &&
+            [ ! -e "$plugin_home/.config/fish/functions/psmem10.fish" ] &&
+            env HOME="$plugin_home" XDG_CONFIG_HOME="$plugin_home/.config" fish -c '
+                test "$_fisher_plugins" = "jorgebucaran/fisher ajholzbach/fish-git"
+                and not set -qU _fisher_ajholzbach_2F_fish_files'
+    }
+    check "Fisher forgets ajholzbach/fish and its files, and a second run changes nothing" \
+        fish_plugin_removed
 fi
 rm -rf "$fixture"
 
@@ -244,7 +309,8 @@ printf '%s\n' '# original Codex rules' > "$HOME/.codex/AGENTS.md"
 chmod 0640 "$HOME/.bashrc"
 chmod 0600 "$HOME/.profile"
 ln -snf .bashrc "$HOME/.zprofile"
-# Another tool's marked block, which apply keeps, and an unmarked line
+# apply keeps the marked block and drops the unmarked line
+# Write another tool's marked block and an unmarked line
 bash_profile_block="$(printf '%s\n' '# >>> other tool >>>' 'export OTHER_TOOL=1' '# <<< other tool <<<')"
 printf '%s\n' "$bash_profile_block" '# original bash_profile' > "$HOME/.bash_profile"
 
@@ -377,7 +443,8 @@ else
         "Antidote ownership marker is missing or stale"
 
     theme_file="/dotfiles/home/dot_config/fish/themes/Catppuccin Mocha.theme"
-    # Fish 4 appends a --theme= marker to each color, so compare the first item.
+    # Fish 4 adds a --theme= item to each color
+    # Compare only the first item of the color
     # shellcheck disable=SC2016 # Expanded by Fish.
     assert_equal "$(awk '$1 == "fish_color_command" { print $2 }' "$theme_file")" \
         "$(fish -ic 'echo $fish_color_command[1]' 2>/dev/null)" \
@@ -402,11 +469,18 @@ else
 
     check "Fish configuration parses and starts without Fisher" \
         eval 'fish -n "$HOME/.config/fish/config.fish" && fish -ic exit'
-    check "Fish starts without installing Fisher or plugin functions" \
+    # TERM stops fish 3 terminal warnings
+    # Start fish twice to test the Starship cache
+    fish_starship_quiet() {
+        local check='functions -q enable_transience; or echo missing'
+        [ -z "$(TERM=xterm-256color fish -ic "$check" 2>&1)" ] &&
+            [ -z "$(TERM=xterm-256color fish -ic "$check" 2>&1)" ]
+    }
+    check "Fish loads the Starship prompt with no errors, also from its cache" \
+        fish_starship_quiet
+    check "Fish starts without Fisher and has the managed functions" \
         fish -ic 'not functions -q fisher
-            and not functions -q tarnow
-            and not functions -q psmem
-            and not functions -q wget'
+            and functions -q tarnow psmem wget lt'
     # shellcheck disable=SC2016 # Expanded by Fish
     check "Fish uses the fixed managed Starship and bat config paths" \
         fish -c 'test "$STARSHIP_CONFIG" = "$HOME/.config/starship.toml"
@@ -440,20 +514,39 @@ else
         '    printf "owner %d 0.0 %d.0 0 0 ? S 00:00 0:00 process%d\n" "$index" "$index" "$index"' \
         'done'
     # shellcheck disable=SC2016 # Expanded by Zsh
-    check "Zsh utility aliases select eza, resume wget, archive files, and sort memory" \
+    check "Zsh aliases select eza" \
         env PATH="$mock_dir:$PATH" zsh -ic '
             eza_flags="--group-directories-first --icons=auto"
             [[ "$(ls fixture)" == "$eza_flags fixture" ]] &&
             [[ "$(ll fixture)" == "-l $eza_flags fixture" ]] &&
             [[ "$(la fixture)" == "-a $eza_flags fixture" ]] &&
-            [[ "$(lt fixture)" == "-aT $eza_flags fixture" ]] &&
-            [[ "$(wget fixture)" == "-c fixture" ]] &&
-            [[ "$(tarnow archive.tar.gz fixture)" == "-acf archive.tar.gz fixture" ]] &&
-            [[ "$(untar archive.tar.gz)" == "-xvf archive.tar.gz" ]] &&
-            all=("${(@f)$(psmem)}") && (( ${#all} == 13 )) &&
-            [[ "${all[2]}" == *process12 && "${all[13]}" == *process1 ]] &&
-            top=("${(@f)$(psmem10)}") && (( ${#top} == 11 )) &&
-            [[ "${top[2]}" == *process12 && "${top[11]}" == *process3 ]]'
+            [[ "$(lt fixture)" == "-aT $eza_flags fixture" ]]'
+    # shellcheck disable=SC2016 # Expanded by Fish
+    check "Fish utility functions select eza, resume wget, archive files, and sort memory" \
+        env PATH="$mock_dir:$PATH" fish -c '
+            set -l flags --group-directories-first --icons=auto
+            test "$(ls fixture)" = "$flags fixture"
+            and test "$(ll fixture)" = "-l $flags fixture"
+            and test "$(la fixture)" = "-a $flags fixture"
+            and test "$(lt fixture)" = "-aT $flags fixture"
+            and test "$(wget fixture)" = "-c fixture"
+            and test "$(tarnow archive.tar.gz fixture)" = "-acf archive.tar.gz fixture"
+            and test "$(untar archive.tar.gz)" = "-xvf archive.tar.gz"
+            and set -l all (psmem); and test (count $all) -eq 13
+            and string match -q "*process12" $all[2]; and string match -q "*process1" $all[13]
+            and set -l top (psmem 10); and test (count $top) -eq 11
+            and string match -q "*process3" $top[11]'
+    # shellcheck disable=SC2016 # Expanded by Fish
+    check "Fish functions fall back when eza is missing" \
+        env PATH="$system_path" fish -c '
+            not command -q eza
+            and ls / >/dev/null; and ll / >/dev/null; and la / >/dev/null
+            and test "$(echo hi | cat)" = hi
+            and if command -q tree
+                lt / >/dev/null
+            else
+                test "$(lt / 2>&1)" = "lt: needs eza or tree"
+            end'
 
     check "Xonsh configuration starts" xonsh -i -c exit
     check "Xonsh uses the fixed managed Starship and bat config paths" \

@@ -6,6 +6,7 @@ on:
   pull_request:
   workflow_dispatch:
   # Catch breaking upstream releases between pushes
+  # Run every Monday
   schedule:
     - cron: "0 6 * * 1"
 

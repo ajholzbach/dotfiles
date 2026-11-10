@@ -8,13 +8,9 @@ home/**/*local-env.fish
 home/**/*local-env.ps1
 
 # Generated Fish files
-home/dot_config/fish/completions/*
-home/dot_config/fish/conf.d/*
 home/dot_config/fish/fish_history
 home/dot_config/fish/fish_variables
-home/dot_config/fish/functions/*
 home/dot_config/fish/generated_completions/*
 home/dot_config/fish/themes/*
 
-!home/dot_config/fish/conf.d/mise-activate.fish
 !home/dot_config/fish/themes/Catppuccin Mocha.theme

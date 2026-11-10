@@ -1,0 +1,41 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+{{ template "common.sh" . }}
+umask 077
+
+if ! fish_bin="$(find_tool fish)"; then
+    exit 0
+fi
+
+# uninstall.sh restores the moved files from this folder
+BACKUP="$STATE_ROOT/fish-files-backup"
+
+# shellcheck disable=SC2016 # Fish expands these variables
+DOTFILES_LOADING_LOCAL_ENV=1 XDG_CONFIG_HOME="$HOME/.config" "$fish_bin" -c '
+    set -l fish_dir (path normalize $__fish_config_dir)
+    # Older dotfiles wrote these copies, and the copies hide newer completions
+    # Move the old completion copies
+    set -l files (path filter $fish_dir/completions/{chezmoi,fd,mise,rg}.fish)
+    # An older Fisher sync renamed the OrbStack kubectl.fish link to these names
+    # Move the kubectl.fish backups
+    set -a files $fish_dir/completions/kubectl.fish.pre-fisher-backup*
+
+    # Fish 4.3 writes this file on upgrade to keep the old key bindings
+    # Move the file when the file keeps only the default bindings
+    set -l frozen $fish_dir/conf.d/fish_frozen_key_bindings.fish
+    if test -f $frozen
+        and not string match -qvr "^(#.*|\s*|set --erase --universal fish_key_bindings)\$" <$frozen
+        set -a files $frozen
+    end
+
+    # Move each file to the backup folder, or delete the file when a backup exists
+    for file in $files
+        set -l saved $argv[1]/(string replace -- $fish_dir/ "" $file)
+        mkdir -p (path dirname $saved)
+        if test -e $saved; or test -L $saved
+            rm -f $file
+        else
+            mv $file $saved
+        end
+        echo "Removed $file"
+    end' "$BACKUP"
+{{- end }}

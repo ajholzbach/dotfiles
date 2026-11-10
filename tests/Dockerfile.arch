@@ -1,7 +1,7 @@
 FROM archlinux:base
 
-# Pacman's package sandbox is incompatible with amd64 emulation in some Docker
-# runtimes. This image is disposable, and --disable-sandbox works natively too.
+# The sandbox fails under amd64 emulation in some Docker runtimes
+# Run pacman without its sandbox
 RUN pacman --disable-sandbox -Syu --noconfirm --needed \
     bat \
     ca-certificates \

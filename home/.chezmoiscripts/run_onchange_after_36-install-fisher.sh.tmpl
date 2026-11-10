@@ -12,7 +12,7 @@ run_fish() {
     DOTFILES_LOADING_LOCAL_ENV=1 XDG_CONFIG_HOME="$HOME/.config" "$fish_bin" "$@"
 }
 
-# Fisher keeps exactly the plugins in fish_plugins, including itself.
+# Sync the plugins with fish_plugins, or install Fisher when it is missing
 # shellcheck disable=SC2016 # Fish expands these variables
 if run_fish -c 'contains jorgebucaran/fisher $_fisher_plugins'; then
     printf 'Syncing Fish plugins with Fisher...\n'
@@ -20,8 +20,8 @@ if run_fish -c 'contains jorgebucaran/fisher $_fisher_plugins'; then
 else
     printf 'Installing Fisher and the Fish plugins...\n'
     download_installer https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish
-    # Fisher does not overwrite copies of itself that it does not own, so move
-    # them aside and put them back if Fisher fails.
+    # Fisher does not overwrite files that it does not own
+    # Move unowned Fisher copies aside, and put them back if the install fails
     fisher_dir="$(run_fish -c 'set -q fisher_path; or set fisher_path $__fish_config_dir
         echo $fisher_path')"
     for file in "$fisher_dir/functions/fisher.fish" "$fisher_dir/completions/fisher.fish"; do
@@ -38,7 +38,8 @@ else
     done
 fi
 
-# Fisher exits 0 when a plugin download fails, so check the result
+# Fisher exits 0 even when a download fails
+# Check that Fisher installed each plugin
 installed="$(run_fish -c 'fisher list')"
 for plugin in $PLUGINS; do
     printf '%s\n' "$installed" | grep -Fqx -e "$plugin" || \

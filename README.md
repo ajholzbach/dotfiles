@@ -37,8 +37,8 @@ See [docs/install.md](docs/install.md) for Windows and other install options.
 | Program | Configuration |
 | --- | --- |
 | Bash | Shared `.profile`, local environment, and guarded tool integrations |
-| zsh | Completion, history, lazy Conda and NVM, Antidote plugins, and `wget`, `tarnow`, `untar`, and `psmem` helpers |
-| Fish | Autoloaded functions, the Catppuccin Mocha theme, and the Fisher plugin list |
+| zsh | Completion, history, lazy Conda and NVM, and Antidote plugins |
+| Fish | Lazy zoxide, fzf, and Conda, the `wget`, `tarnow`, `untar`, and `psmem` helpers, extra completions, the Catppuccin Mocha theme, and the Fisher plugin list |
 | Xonsh | Guarded integrations, lazy Conda, and Git aliases |
 | PowerShell | One shared profile for PowerShell 7 and Windows PowerShell |
 | [eza](https://eza.rocks/) | `ls`, `ll`, `la`, and `lt` aliases with icons and directory grouping |
@@ -54,7 +54,6 @@ Each integration activates only when its program is installed.
 
 [Fisher](https://github.com/jorgebucaran/fisher) installs these plugins from [`fish_plugins`](home/dot_config/fish/fish_plugins):
 
-- [ajholzbach/fish](https://github.com/ajholzbach/fish) provides shared Fish functions and completions, including the eza, wget, tar, and memory helpers.
 - [ajholzbach/fish-git](https://github.com/ajholzbach/fish-git) provides lazy-loaded Git aliases.
 - [ajholzbach/fish-kubectl](https://github.com/ajholzbach/fish-kubectl) provides lazy-loaded kubectl aliases and completions.
 

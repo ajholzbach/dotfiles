@@ -39,7 +39,8 @@ function Copy-PathPreservingLink {
     }
 }
 
-# Pass on the outer apply's paths, so a custom source or destination is used
+# A custom source, config, or destination must apply here too
+# Pass the outer apply's paths to this chezmoi
 $destDir = '{{ .chezmoi.destDir | replace "'" "''" }}'
 $managed = @(& '{{ .chezmoi.executable | replace "'" "''" }}' `
         --source '{{ .chezmoi.sourceDir | replace "'" "''" }}' `
@@ -108,7 +109,7 @@ if ($isNewBackup) {
 }
 
 try {
-    # Back up only new targets, so each target keeps its original backup
+    # Back up only the targets that are new to the restore point
     $addedCount = 0
     foreach ($relativePath in $managed) {
         if (-not $savedManagedSet.Add($relativePath)) {
@@ -124,9 +125,8 @@ try {
     }
 
     if ($addedCount -gt 0) {
-        # Replace existing-files first. An interruption between the two
-        # replacements leaves a safely detectable mismatch, never a new
-        # target that uninstall would incorrectly treat as disposable.
+        # An interruption must never make uninstall delete an original
+        # Write existing-files before managed-files
         Write-StateFile (Join-Path $backupDir 'existing-files.txt') $savedExisting
         Write-StateFile (Join-Path $backupDir 'managed-files.txt') $savedManaged
     }

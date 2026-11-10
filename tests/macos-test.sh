@@ -70,7 +70,7 @@ check 'second apply leaves no install script pending' \
     sh -c "! chezmoi status --include=scripts | grep -E '15-mise-bootstrap|36-install-fisher'"
 
 echo '== uninstall'
-# The command from docs/uninstall.md
+# Run the uninstall command from docs/uninstall.md
 run uninstall sh "$(chezmoi source-path)/../uninstall.sh" --yes
 check 'uninstall succeeds' test "$?" -eq 0
 check '.bashrc restored' cmp "$LOGS/original/.bashrc" "$HOME/.bashrc"

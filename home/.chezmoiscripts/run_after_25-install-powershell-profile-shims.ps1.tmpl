@@ -1,7 +1,7 @@
 {{- if eq .chezmoi.os "windows" -}}
 $ErrorActionPreference = 'Stop'
 
-# Run on every apply to repair recreated profiles without touching user content
+# Run on every apply to repair recreated profiles and keep user content
 {{ template "powershell-profile-paths.ps1" . }}
 $beginMarker = '# >>> dotfiles managed PowerShell profile >>>'
 $endMarker = '# <<< dotfiles managed PowerShell profile <<<'
@@ -20,8 +20,8 @@ function Read-ProfileText {
     $reader = [IO.StreamReader]::new($Path, [Text.UTF8Encoding]::new($false, $true), $true)
     try {
         $content = $reader.ReadToEnd()
-        # A detected UTF-16 or UTF-32 BOM selects a decoder that replaces
-        # invalid bytes. Writing that text back would corrupt the profile.
+        # A UTF-16 or UTF-32 BOM selects a decoder that replaces bad bytes
+        # Stop when the text has U+FFFD
         if ($content.Contains([char]0xFFFD)) {
             throw "Refusing to rewrite $Path because it is not valid $($reader.CurrentEncoding.WebName)."
         }
