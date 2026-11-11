@@ -5,14 +5,15 @@ The tools install adds the programs below. It installs [mise](https://mise.jdx.d
 | System | Installer |
 | --- | --- |
 | macOS | Homebrew, installed first when it is missing. mise installs bat, eza, Fish, fzf, and zoxide as Homebrew formulae |
-| Debian and Ubuntu | apt for Fish, Git, and zsh. mise for bat, eza, fzf, and zoxide |
+| Ubuntu | apt for Fish, Git, and zsh. When the release has Fish 3 or no Fish, the [Fish 4 PPA](https://launchpad.net/~fish-shell/+archive/ubuntu/release-4) is added first. mise for bat, eza, fzf, and zoxide |
+| Debian | apt for Fish, Git, and zsh. mise for bat, eza, fzf, and zoxide |
 | Arch, CachyOS, and other Arch-based systems | pacman for Fish, Git, and zsh. mise for bat, eza, fzf, and zoxide |
 
 mise skips the entries for package managers that the system does not have, and counts formulae that Homebrew already installed. On other Linux systems, only the mise tools install. On Intel Macs, mise skips the Homebrew formulae.
 
 After the packages, it installs Fisher and the plugins in [`fish_plugins`](../home/dot_config/fish/fish_plugins). Fisher keeps exactly the plugins in that file. To add a plugin, add it to the file in the chezmoi source and apply.
 
-On Linux, mise uses `sudo` only to install missing packages. The setup runs again when the mise config changes. Run `mise upgrade` on Linux or `brew upgrade` on macOS to update the CLI tools.
+On Linux, the setup uses `sudo` only to add the Fish PPA and to install missing packages. Fish 3 marks zoxide queries after `cd` as bad paths, so Ubuntu gets Fish 4 from the PPA. The setup runs again when the mise config changes. Run `mise upgrade` on Linux or `brew upgrade` on macOS to update the CLI tools.
 
 ## Tools
 

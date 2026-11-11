@@ -133,6 +133,7 @@ log "Checking the bootstrap script against a mock mise..."
 for os in linux darwin; do
     mocks="$(mock_dir)"
     mock "$mocks" brew 'exit 0'
+    mock "$mocks" apt-cache "echo '  Candidate: 4.0.0-1'"
     mock "$mocks" mise 'printf "%s %s\n" "$XDG_CONFIG_HOME" "$*" >> "$MOCK_LOG"'
     render "{\"tools\":true,\"chezmoi\":{\"os\":\"$os\"}}" "${TOOL_TARGETS[0]}" > "$mocks/install.sh"
     if HOME="$mocks" MOCK_LOG="$mocks/log" PATH="$mocks:$PATH" sh "$mocks/install.sh" >/dev/null &&
@@ -152,6 +153,36 @@ if ! mock_output="$(HOME="$mocks" PATH="$mocks:$PATH" sh "$mocks/install.sh" 2>&
 else
     fail "bootstrap script ignored a mise without bootstrap"
 fi
+
+log "Checking the fish PPA step against mock apt..."
+# On Ubuntu, a fish 3 candidate adds the PPA and installs fish
+# A fish 4 candidate, or a system that is not Ubuntu, skips the PPA
+codename="$(. /etc/os-release && printf '%s' "${UBUNTU_CODENAME:-}")"
+render '{"tools":true,"chezmoi":{"os":"linux"}}' "${TOOL_TARGETS[0]}" > "$fixture/ppa.sh"
+for candidate in 3.7.0-1 4.0.0-1; do
+    mocks="$(mock_dir)"
+    mock "$mocks" mise 'exit 0'
+    mock "$mocks" apt-cache "echo '  Candidate: $candidate'"
+    mock "$mocks" curl 'while [ $# -gt 0 ]; do [ "$1" != -o ] || echo key > "$2"; shift; done'
+    mock "$mocks" sudo 'printf "%s\n" "$*" >> "$MOCK_LOG"' '[ "$1" != tee ] || cat >> "$MOCK_LOG"'
+    : > "$mocks/log"
+    if ! HOME="$mocks" MOCK_LOG="$mocks/log" PATH="$mocks:$PATH" sh "$fixture/ppa.sh" >/dev/null 2>&1; then
+        fail "bootstrap script failed with fish candidate $candidate"
+    elif [ -n "$codename" ] && [ "$candidate" = 3.7.0-1 ]; then
+        if grep -Fqx "Suites: $codename" "$mocks/log" &&
+                grep -Fqx 'apt-get install -y fish' "$mocks/log"; then
+            ok "fish candidate $candidate adds the fish 4 PPA for $codename"
+        else
+            cat "$mocks/log"
+            fail "fish candidate $candidate did not add the fish 4 PPA"
+        fi
+    elif [ ! -s "$mocks/log" ]; then
+        ok "fish candidate $candidate on ${codename:-a system that is not Ubuntu} skips the PPA"
+    else
+        cat "$mocks/log"
+        fail "fish candidate $candidate ran sudo"
+    fi
+done
 
 log "Installing the dotfiles with recommended tools..."
 if ! apply_output="$(chezmoi --use-builtin-git=true init --apply \
@@ -195,6 +226,12 @@ check_packages() {
     done
 }
 check_packages ''
+
+if fish_version="$(fish --version 2>&1)" && grep -Eq 'version ([4-9]|[1-9][0-9])\.' <<< "$fish_version"; then
+    ok "Fish 4 or later is installed ($fish_version)"
+else
+    fail "Fish 4 or later is not installed ($fish_version)"
+fi
 
 if zsh_alias="$(zsh -ic 'alias ls' 2>&1)" && grep -Fq eza <<< "$zsh_alias"; then
     ok "Zsh finds the installed eza at startup"
