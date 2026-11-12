@@ -21,34 +21,18 @@ if [ ! -x "$mise_bin" ]; then
 fi
 "$mise_bin" bootstrap --help >/dev/null 2>&1 || \
     die "mise $("$mise_bin" --version) has no bootstrap command. Update mise, then apply again."
-{{- if eq .chezmoi.os "linux" }}
-
-# Fish 3 marks zoxide queries after cd as bad paths
-# On Ubuntu releases with fish 3 or no fish, add the fish 4 PPA, then install fish
-fish_codename=''
-[ ! -r /etc/os-release ] ||
-    fish_codename="$(. /etc/os-release && printf '%s' "${UBUNTU_CODENAME:-}")"
-if [ -n "$fish_codename" ] && command -v apt-get >/dev/null; then
-    fish_candidate="$(apt-cache policy fish 2>/dev/null | sed -n 's/^ *Candidate: //p')"
-    case "${fish_candidate:-none}" in
-        [0-3].* | none | '(none)')
-            printf 'Adding the fish 4 PPA for Ubuntu %s...\n' "$fish_codename"
-            download_installer 'https://keyserver.ubuntu.com/pks/lookup?op=get&options=mr&search=0x88421E703EDC7AF54967DED473C9FCC9E2BB48DA'
-            sudo install -D -m 0644 "$installer" /etc/apt/keyrings/fish-shell-release-4.asc
-            printf '%s\n' \
-                'Types: deb' \
-                'URIs: https://ppa.launchpadcontent.net/fish-shell/release-4/ubuntu' \
-                "Suites: $fish_codename" \
-                'Components: main' \
-                'Signed-By: /etc/apt/keyrings/fish-shell-release-4.asc' |
-                sudo tee /etc/apt/sources.list.d/fish-shell-release-4.sources >/dev/null
-            sudo apt-get update
-            sudo apt-get install -y fish
-            ;;
-    esac
-fi
-{{- end }}
 
 printf 'Installing recommended tools with mise bootstrap...\n'
 XDG_CONFIG_HOME="$HOME/.config" "$mise_bin" bootstrap --only packages,tools --yes
+{{- if eq .chezmoi.os "darwin" }}
+
+# The one-line install puts chezmoi in ~/.local/bin, which would shadow updates from Homebrew
+# Remove that copy when Homebrew provides chezmoi
+local_chezmoi="$HOME/.local/bin/chezmoi"
+if [ -x "$local_chezmoi" ] && brew_bin="$(find_tool brew)" &&
+        [ -x "$("$brew_bin" --prefix)/bin/chezmoi" ]; then
+    rm -f "$local_chezmoi"
+    printf 'Removed %s, because Homebrew provides chezmoi.\n' "$local_chezmoi"
+fi
+{{- end }}
 {{ end -}}

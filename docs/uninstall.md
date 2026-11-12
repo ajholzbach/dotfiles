@@ -1,6 +1,6 @@
 # Uninstall
 
-Uninstall restores the files from the restore point and removes the font, Starship, and Antidote that the dotfiles installed. On macOS, the font cask stays installed. Packages, Fisher, and Fish plugins from the tools install stay installed. Uninstall removes `10-dotfiles-tools.toml`, so on Linux mise stops activating bat, eza, fzf, and zoxide.
+Uninstall restores the files from the restore point and removes the font, Starship, and Antidote that the dotfiles installed. Packages, Fisher, and Fish plugins from the tools install stay installed. Uninstall removes `10-dotfiles-tools.toml`, so on Linux mise stops activating bat, eza, fzf, and zoxide.
 
 Preview the restore:
 

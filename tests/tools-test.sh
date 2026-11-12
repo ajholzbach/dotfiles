@@ -39,14 +39,6 @@ mock_dir() {
     mktemp -d -p "$fixture"
 }
 
-# mock DIR NAME LINE...: write an executable shell script DIR/NAME
-mock() {
-    local dir="$1" name="$2"
-    shift 2
-    printf '%s\n' '#!/bin/sh' "$@" > "$dir/$name"
-    chmod +x "$dir/$name"
-}
-
 # renders DATA TARGET: succeed when TARGET produces a file for DATA.
 # Return 2 when the template fails to render.
 renders() {
@@ -132,9 +124,8 @@ log "Checking the bootstrap script against a mock mise..."
 # installed Homebrew is reused.
 for os in linux darwin; do
     mocks="$(mock_dir)"
-    mock "$mocks" brew 'exit 0'
-    mock "$mocks" apt-cache "echo '  Candidate: 4.0.0-1'"
-    mock "$mocks" mise 'printf "%s %s\n" "$XDG_CONFIG_HOME" "$*" >> "$MOCK_LOG"'
+    stub "$mocks" brew 'exit 0'
+    stub "$mocks" mise 'printf "%s %s\n" "$XDG_CONFIG_HOME" "$*" >> "$MOCK_LOG"'
     render "{\"tools\":true,\"chezmoi\":{\"os\":\"$os\"}}" "${TOOL_TARGETS[0]}" > "$mocks/install.sh"
     if HOME="$mocks" MOCK_LOG="$mocks/log" PATH="$mocks:$PATH" sh "$mocks/install.sh" >/dev/null &&
             [ "$(tail -n 1 "$mocks/log")" = "$mocks/.config bootstrap --only packages,tools --yes" ]; then
@@ -144,8 +135,39 @@ for os in linux darwin; do
     fi
 done
 
+# On macOS, Homebrew provides chezmoi after the one-line install
+# The bootstrap script removes the ~/.local/bin copy
+mocks="$(mock_dir)"
+stub "$mocks/brew-prefix/bin" chezmoi 'exit 0'
+stub "$mocks/.local/bin" chezmoi 'exit 0'
+stub "$mocks" brew "echo '$mocks/brew-prefix'"
+stub "$mocks" mise 'exit 0'
+render '{"tools":true,"chezmoi":{"os":"darwin"}}' "${TOOL_TARGETS[0]}" > "$mocks/install.sh"
+if HOME="$mocks" PATH="$mocks:$PATH" sh "$mocks/install.sh" >/dev/null &&
+        [ ! -e "$mocks/.local/bin/chezmoi" ]; then
+    ok "bootstrap script on macOS removes ~/.local/bin/chezmoi when Homebrew provides chezmoi"
+else
+    fail "bootstrap script on macOS kept ~/.local/bin/chezmoi next to the Homebrew copy"
+fi
+
+# On Apple silicon with tools, Homebrew installs Starship, Antidote, and the font
+# The dotfiles installers and the font externals render nothing there
+homebrew_owned() {
+    local data="{\"tools\":true,\"chezmoi\":{\"os\":\"darwin\",\"arch\":\"$1\"}}"
+    [ -z "$(render "$data" .chezmoiscripts/run_after_12-install-starship.sh.tmpl | tr -d '[:space:]')" ] &&
+        [ -z "$(render "$data" .chezmoiscripts/run_after_16-install-antidote.sh.tmpl | tr -d '[:space:]')" ]
+}
+no_font_externals() {
+    ! render '{"tools":true,"chezmoi":{"os":"darwin"}}' .chezmoiexternal.toml.tmpl | grep -q '^\['
+}
+if homebrew_owned arm64 && ! homebrew_owned amd64 && no_font_externals; then
+    ok "macOS with tools leaves Starship, Antidote, and the font to Homebrew"
+else
+    fail "macOS with tools still renders a dotfiles installer that Homebrew replaces"
+fi
+
 # A mise without bootstrap stops the apply with a recovery hint
-mock "$mocks" mise '[ "$1" = --version ] && echo 2024.1.0' 'exit 2'
+stub "$mocks" mise '[ "$1" = --version ] && echo 2024.1.0' 'exit 2'
 if ! mock_output="$(HOME="$mocks" PATH="$mocks:$PATH" sh "$mocks/install.sh" 2>&1)" &&
         grep -Fq 'has no bootstrap command' <<< "$mock_output" &&
         grep -Fq "$PROMPT=false" <<< "$mock_output"; then
@@ -153,36 +175,6 @@ if ! mock_output="$(HOME="$mocks" PATH="$mocks:$PATH" sh "$mocks/install.sh" 2>&
 else
     fail "bootstrap script ignored a mise without bootstrap"
 fi
-
-log "Checking the fish PPA step against mock apt..."
-# On Ubuntu, a fish 3 candidate adds the PPA and installs fish
-# A fish 4 candidate, or a system that is not Ubuntu, skips the PPA
-codename="$(. /etc/os-release && printf '%s' "${UBUNTU_CODENAME:-}")"
-render '{"tools":true,"chezmoi":{"os":"linux"}}' "${TOOL_TARGETS[0]}" > "$fixture/ppa.sh"
-for candidate in 3.7.0-1 4.0.0-1; do
-    mocks="$(mock_dir)"
-    mock "$mocks" mise 'exit 0'
-    mock "$mocks" apt-cache "echo '  Candidate: $candidate'"
-    mock "$mocks" curl 'while [ $# -gt 0 ]; do [ "$1" != -o ] || echo key > "$2"; shift; done'
-    mock "$mocks" sudo 'printf "%s\n" "$*" >> "$MOCK_LOG"' '[ "$1" != tee ] || cat >> "$MOCK_LOG"'
-    : > "$mocks/log"
-    if ! HOME="$mocks" MOCK_LOG="$mocks/log" PATH="$mocks:$PATH" sh "$fixture/ppa.sh" >/dev/null 2>&1; then
-        fail "bootstrap script failed with fish candidate $candidate"
-    elif [ -n "$codename" ] && [ "$candidate" = 3.7.0-1 ]; then
-        if grep -Fqx "Suites: $codename" "$mocks/log" &&
-                grep -Fqx 'apt-get install -y fish' "$mocks/log"; then
-            ok "fish candidate $candidate adds the fish 4 PPA for $codename"
-        else
-            cat "$mocks/log"
-            fail "fish candidate $candidate did not add the fish 4 PPA"
-        fi
-    elif [ ! -s "$mocks/log" ]; then
-        ok "fish candidate $candidate on ${codename:-a system that is not Ubuntu} skips the PPA"
-    else
-        cat "$mocks/log"
-        fail "fish candidate $candidate ran sudo"
-    fi
-done
 
 log "Installing the dotfiles with recommended tools..."
 if ! apply_output="$(chezmoi --use-builtin-git=true init --apply \
@@ -274,7 +266,7 @@ fi
 
 # A sudo that always fails proves each script finds its work already done
 mocks="$(mock_dir)"
-mock "$mocks" sudo 'echo "unexpected sudo $*" >&2' 'exit 1'
+stub "$mocks" sudo 'echo "unexpected sudo $*" >&2' 'exit 1'
 if rerun_output="$(PATH="$mocks:$PATH" chezmoi apply 2>&1)" && [ -z "$(tool_scripts)" ]; then
     ok "Every tools script runs again without needing root"
 else

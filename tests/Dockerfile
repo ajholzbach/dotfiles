@@ -26,18 +26,18 @@ RUN useradd -m -s /bin/bash testuser
 USER testuser
 WORKDIR /home/testuser
 
+# rc.xsh warns when the catppuccin-mocha style is missing
+# Install ptk and the catppuccin theme before the cache-bust layer, which changes on each run
+RUN python3 -m pip install --user --break-system-packages \
+    'xonsh[ptk]' \
+    'catppuccin[pygments]'
+
 ARG CHEZMOI_INSTALLER_CACHE_BUST=manual-build
 RUN test -n "$CHEZMOI_INSTALLER_CACHE_BUST" && \
     curl --proto '=https' --tlsv1.2 -fsSL \
         -o /tmp/get-chezmoi.sh https://get.chezmoi.io && \
     sh /tmp/get-chezmoi.sh -b /home/testuser/.local/bin && \
     rm -f /tmp/get-chezmoi.sh
-
-# rc.xsh warns when the catppuccin-mocha style is missing
-# Install ptk and the catppuccin theme for rc.xsh
-RUN python3 -m pip install --user --break-system-packages \
-    'xonsh[ptk]' \
-    'catppuccin[pygments]'
 
 ENV PATH="/home/testuser/.local/bin:/home/testuser/bin:${PATH}"
 

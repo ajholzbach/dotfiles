@@ -1,4 +1,5 @@
-{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+{{- /* Homebrew installs it on macOS with tools */ -}}
+{{- if and (or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux")) (ne (includeTemplate "homebrew-tools" .) "true") -}}
 {{ template "common.sh" . }}
 umask 077
 

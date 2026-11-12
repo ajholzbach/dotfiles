@@ -1,0 +1,12 @@
+{{- if and (index . "tools") (eq .chezmoi.os "linux") -}}
+{{ template "common.sh" . }}
+
+# mise now adds the fish 4 PPA, and apt fails when a second copy has another Signed-By
+# Delete the PPA files that older dotfiles wrote
+sources=/etc/apt/sources.list.d/fish-shell-release-4.sources
+key=/etc/apt/keyrings/fish-shell-release-4.asc
+if grep -Fqx "Signed-By: $key" "$sources" 2>/dev/null; then
+    sudo rm -f "$sources" "$key"
+    printf 'Removed %s\n' "$sources"
+fi
+{{- end }}

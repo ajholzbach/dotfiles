@@ -14,25 +14,11 @@ sha() { sha256sum "$1" | cut -d ' ' -f 1; }
 # full_mode: succeed in the suites that install the optional shells and tools
 full_mode() { [ "$TEST_MODE" != minimal ]; }
 
-# check MESSAGE COMMAND...: pass when COMMAND succeeds, with its output hidden
-check() {
-    local message="$1"
-    shift
-    if "$@" >/dev/null 2>&1; then ok "$message"; else fail "$message"; fi
-}
-
 # render SCRIPT OS: print a chezmoi script template rendered for OS
 render() {
     chezmoi execute-template --source /dotfiles/home \
         --override-data "{\"chezmoi\":{\"os\":\"$2\"},\"tools\":true}" \
         --file "$scripts/$1"
-}
-
-# stub DIR NAME LINE...: write the executable shell script DIR/NAME
-stub() {
-    mkdir -p "$1"
-    printf '%s\n' '#!/bin/sh' "${@:3}" > "$1/$2"
-    chmod +x "$1/$2"
 }
 
 # restore_point_fixture DIR: create DIR/home with a one-file restore point
@@ -80,28 +66,16 @@ else
     fail "Starship template dropped populated kube context data"
 fi
 
-log "Checking the macOS font script..."
-font_dir="$(mktemp -d)"
-mkdir -p "$font_dir/Library/Fonts"
-stub "$font_dir/bin" brew 'printf "%s\n" "$*" >> "$HOME/brew.log"'
-render run_after_17-install-font-macos.sh.tmpl darwin > "$font_dir/font.sh"
-# brew_calls PATH: run the font script with PATH and print its brew calls
-brew_calls() {
-    rm -f "$font_dir/brew.log"
-    HOME="$font_dir" PATH="$1" sh "$font_dir/font.sh" >/dev/null || { echo failed; return; }
-    cat "$font_dir/brew.log" 2>/dev/null || true
+log "Checking the macOS font externals..."
+# darwin_fonts: print the font targets that chezmoi installs on macOS
+darwin_fonts() {
+    chezmoi execute-template --source /dotfiles/home --override-data '{"chezmoi":{"os":"darwin"}}' \
+        --file /dotfiles/home/.chezmoiexternal.toml.tmpl | sed -n 's/^\["\(.*\)"\]$/\1/p'
 }
-assert_equal 'install --cask font-meslo-lg-nerd-font' "$(brew_calls "$font_dir/bin:/usr/bin:/bin")" \
-    "Font script installs the Homebrew cask when the font is missing" \
-    "Font script did not install the Homebrew cask"
-assert_equal '' "$(brew_calls /usr/bin:/bin)" \
-    "Font script succeeds without Homebrew" \
-    "Font script failed without Homebrew"
-touch "$font_dir/Library/Fonts/MesloLGSNerdFont-Regular.ttf"
-assert_equal '' "$(brew_calls "$font_dir/bin:/usr/bin:/bin")" \
-    "Font script skips Homebrew when the font is installed" \
-    "Font script called Homebrew for an installed font"
-rm -rf "$font_dir"
+assert_equal "$(printf 'Library/Fonts/MesloLGSNerdFont-%s.ttf\n' Regular Bold Italic BoldItalic)" \
+    "$(darwin_fonts)" \
+    "macOS installs the four font files into ~/Library/Fonts" \
+    "macOS font targets are wrong"
 
 log "Checking that installers leave existing installations alone..."
 fixture="$(mktemp -d)"

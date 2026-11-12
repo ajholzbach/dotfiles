@@ -43,34 +43,38 @@ autoload -Uz compinit
 } "$_dotfiles_zsh_cache/zcompdump"
 unset _dotfiles_zsh_cache
 
-# Lazy-load Conda from common macOS and Linux locations
-for _dotfiles_conda_root in \
-    /opt/homebrew/Caskroom/miniforge/base \
-    /opt/homebrew/Caskroom/miniconda/base \
-    /usr/local/Caskroom/miniforge/base \
-    /usr/local/Caskroom/miniconda/base \
-    "$HOME/miniforge3" \
-    "$HOME/miniconda3" \
-    "$HOME/anaconda3" \
-    /opt/miniforge3 \
-    /opt/miniconda3 \
-    /opt/conda; do
-    if [ -x "$_dotfiles_conda_root/bin/conda" ]; then
-        _dotfiles_conda_exe="$_dotfiles_conda_root/bin/conda"
-        conda() {
-            unset -f conda
-            local conda_hook
-            if ! conda_hook="$("$_dotfiles_conda_exe" shell.zsh hook 2>/dev/null)" || \
-                    [ -z "$conda_hook" ] || ! eval "$conda_hook"; then
-                export PATH="${_dotfiles_conda_exe:h}:$PATH"
-            fi
-            unset _dotfiles_conda_exe
-            conda "$@"
-        }
-        break
-    fi
-done
-unset _dotfiles_conda_root
+# Lazy-load Conda from CONDA_EXE, PATH, or common macOS and Linux locations
+_dotfiles_conda_roots=(
+    "$HOME/miniforge3" "$HOME/miniconda3" "$HOME/anaconda3" "$HOME/mambaforge"
+    /opt/miniforge3 /opt/miniconda3 /opt/anaconda3 /opt/conda
+)
+[[ -n ${HOMEBREW_PREFIX:-} ]] &&
+    _dotfiles_conda_roots+=("$HOMEBREW_PREFIX"/Caskroom/{miniforge,miniconda,mambaforge,anaconda}/base)
+if [[ -x ${CONDA_EXE:-} ]]; then
+    _dotfiles_conda_exe=$CONDA_EXE
+elif (( $+commands[conda] )); then
+    _dotfiles_conda_exe=$commands[conda]
+else
+    for _dotfiles_conda_root in $_dotfiles_conda_roots; do
+        if [[ -x $_dotfiles_conda_root/bin/conda ]]; then
+            _dotfiles_conda_exe=$_dotfiles_conda_root/bin/conda
+            break
+        fi
+    done
+fi
+if [[ -n ${_dotfiles_conda_exe:-} ]]; then
+    conda() {
+        unset -f conda
+        local conda_hook
+        if ! conda_hook="$("$_dotfiles_conda_exe" shell.zsh hook 2>/dev/null)" || \
+                [ -z "$conda_hook" ] || ! eval "$conda_hook"; then
+            export PATH="${_dotfiles_conda_exe:h}:$PATH"
+        fi
+        unset _dotfiles_conda_exe
+        conda "$@"
+    }
+fi
+unset _dotfiles_conda_root _dotfiles_conda_roots
 
 # Lazy-load NVM
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
@@ -104,20 +108,12 @@ if [ -z "${PNPM_HOME:-}" ]; then
 fi
 [[ -n ${PNPM_HOME:-} ]] && path=("$PNPM_HOME" $path)
 
-# Load the untracked per-machine environment file
-if [ -z "${DOTFILES_LOADING_LOCAL_ENV:-}" ] && [ -f "$HOME/.config/local-env.sh" ]; then
-    DOTFILES_LOADING_LOCAL_ENV=1
-    source "$HOME/.config/local-env.sh"
-    unset DOTFILES_LOADING_LOCAL_ENV
-fi
-
 if (( $+commands[mise] )); then
     eval "$(mise activate zsh)"
 fi
 
 if (( $+commands[zoxide] )); then
-    eval "$(zoxide init zsh)"
-    alias cd='z'
+    eval "$(zoxide init zsh --cmd cd)"
     alias cdo='builtin cd'
 fi
 
@@ -158,14 +154,17 @@ git_current_branch() {
 }
 
 # zsh-syntax-highlighting must wrap every widget
-# Load Antidote last
-if [ -f "$HOME/.antidote/antidote.zsh" ]; then
+# Load Antidote last, from ~/.antidote or from Homebrew on macOS with tools
+_dotfiles_antidote="$HOME/.antidote/antidote.zsh"
+[[ -f $_dotfiles_antidote || -z ${HOMEBREW_PREFIX:-} ]] ||
+    _dotfiles_antidote="$HOMEBREW_PREFIX/opt/antidote/share/antidote/antidote.zsh"
+if [ -f "$_dotfiles_antidote" ]; then
     # Rebuild the cached bundle only when the plugin list changes
     _dotfiles_plugins_txt="${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
     _dotfiles_plugins_bundle="${XDG_CACHE_HOME:-$HOME/.cache}/antidote/zsh_plugins.zsh"
     if [[ ! $_dotfiles_plugins_bundle -nt $_dotfiles_plugins_txt ]]; then
         mkdir -p "${_dotfiles_plugins_bundle:h}"
-        source "$HOME/.antidote/antidote.zsh"
+        source "$_dotfiles_antidote"
         zstyle ':antidote:bundle:*' zcompile yes
         # Defer only the plugin load, and skip the prompt hooks and redraw
         zstyle ':antidote:bundle:*' defer-options '-a'
@@ -182,3 +181,4 @@ if [ -f "$HOME/.antidote/antidote.zsh" ]; then
     [ -s "$_dotfiles_plugins_bundle" ] && source "$_dotfiles_plugins_bundle"
     unset _dotfiles_plugins_txt _dotfiles_plugins_bundle
 fi
+unset _dotfiles_antidote

@@ -44,3 +44,12 @@ if [ -n "${EDITOR:-}" ]; then
     export EDITOR
     export VISUAL="${VISUAL:-$EDITOR}"
 fi
+
+# local-env.sh is for Bash and zsh, and a display manager can run this file with sh
+# Load the untracked per-machine environment file only in Bash and zsh
+if [ -n "${BASH_VERSION:-}${ZSH_VERSION:-}" ] && [ -z "${DOTFILES_LOADING_LOCAL_ENV:-}" ] &&
+        [ -f "$HOME/.config/local-env.sh" ]; then
+    DOTFILES_LOADING_LOCAL_ENV=1
+    . "$HOME/.config/local-env.sh"
+    unset DOTFILES_LOADING_LOCAL_ENV
+fi

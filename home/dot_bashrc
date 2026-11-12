@@ -2,13 +2,6 @@ if [ -f "$HOME/.profile" ]; then
     source "$HOME/.profile"
 fi
 
-# Load the untracked per-machine environment file
-if [ -z "${DOTFILES_LOADING_LOCAL_ENV:-}" ] && [ -f "$HOME/.config/local-env.sh" ]; then
-    DOTFILES_LOADING_LOCAL_ENV=1
-    source "$HOME/.config/local-env.sh"
-    unset DOTFILES_LOADING_LOCAL_ENV
-fi
-
 case $- in
     *i*)
         if command -v mise >/dev/null 2>&1; then
@@ -16,8 +9,7 @@ case $- in
         fi
 
         if command -v zoxide >/dev/null 2>&1; then
-            eval "$(zoxide init bash)"
-            alias cd='z'
+            eval "$(zoxide init bash --cmd cd)"
             alias cdo='builtin cd'
         fi
 

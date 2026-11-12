@@ -4,19 +4,19 @@
 
 The one-line install requires [curl](https://curl.se/download.html). [Git](https://git-scm.com/downloads) is also required when zsh is present and Antidote needs to be installed. The tools install adds Git on Linux.
 
-The one-line install downloads chezmoi, initializes this repository, and applies it. Choose one:
+The one-line install puts the chezmoi binary in `~/.local/bin`, initializes this repository, and applies it. Choose one:
 
 ```sh
-# Dotfiles only
-sh -c "$(curl --proto '=https' --tlsv1.2 -fsSL https://get.chezmoi.io/lb)" -- init --apply --promptDefaults ajholzbach
-
 # Dotfiles and recommended tools
 sh -c "$(curl --proto '=https' --tlsv1.2 -fsSL https://get.chezmoi.io/lb)" -- init --apply --promptBool tools=true ajholzbach
+
+# Dotfiles only
+sh -c "$(curl --proto '=https' --tlsv1.2 -fsSL https://get.chezmoi.io/lb)" -- init --apply --promptDefaults ajholzbach
 ```
 
 Without either flag, chezmoi asks once and saves the answer in `~/.config/chezmoi/chezmoi.toml`.
 
-On macOS, both installs add MesloLGS Nerd Font with the Homebrew cask `font-meslo-lg-nerd-font`. Without Homebrew, the dotfiles install skips the font and tells you to install Homebrew. The tools install adds Homebrew first.
+Both installs add MesloLGS Nerd Font. On macOS, the tools install uses the Homebrew cask `font-meslo-lg-nerd-font`. Otherwise the font goes to `~/Library/Fonts` on macOS and to `~/.local/share/fonts` on Linux.
 
 To review the changes before applying them:
 

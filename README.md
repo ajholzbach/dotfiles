@@ -8,26 +8,21 @@ Shell and tool configurations managed with [chezmoi](https://www.chezmoi.io/).
 
 ## Install
 
-Dotfiles only, on Linux or macOS:
-
-```sh
-sh -c "$(curl --proto '=https' --tlsv1.2 -fsSL https://get.chezmoi.io/lb)" -- init --apply --promptDefaults ajholzbach
-```
-
-Dotfiles and the [recommended tools](docs/tools.md):
+Dotfiles and the [recommended tools](docs/tools.md), on Linux or macOS:
 
 ```sh
 sh -c "$(curl --proto '=https' --tlsv1.2 -fsSL https://get.chezmoi.io/lb)" -- init --apply --promptBool tools=true ajholzbach
 ```
 
-See [docs/install.md](docs/install.md) for Windows and other install options.
+See [docs/install.md](docs/install.md) for the dotfiles-only install, Windows, and other install options.
 
 ## What this repository does
 
 - Applies configuration for Bash, zsh, Fish, Xonsh, and PowerShell
 - Installs the latest stable [Starship](https://starship.rs/) when it is missing
-- Installs MesloLGS Nerd Font on Linux, and with Homebrew on macOS
+- Installs MesloLGS Nerd Font on Linux and macOS
 - Installs [Antidote](https://github.com/mattmc3/antidote) on Linux and macOS when zsh is present
+- On macOS, the tools install gets chezmoi, Starship, Antidote, and the font from Homebrew
 - Uses the [Catppuccin Mocha](https://catppuccin.com/palette/) theme wherever possible
 - Gives Claude Code and Codex the same agent instructions and installs RTK hooks when RTK is present
 - Creates a restore point before changing managed files
@@ -45,7 +40,8 @@ See [docs/install.md](docs/install.md) for Windows and other install options.
 | [bat](https://github.com/sharkdp/bat) | `cat` alias and Catppuccin theme |
 | [zoxide](https://github.com/ajeetdsouza/zoxide), [fzf](https://github.com/junegunn/fzf), [mise](https://mise.jdx.dev/) | Shell integration |
 | [Ghostty](https://ghostty.org/), [Zed](https://zed.dev/) | Catppuccin Mocha and MesloLGS Nerd Font |
-| Vim, tmux, btop | Configuration and themes |
+| Vim, tmux | Configuration |
+| btop | Catppuccin Mocha theme |
 | Other tools | Small configuration changes, such as the Catppuccin Mocha theme |
 
 Each integration activates only when its program is installed.

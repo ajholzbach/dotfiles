@@ -1,6 +1,7 @@
-{{- /* macOS installs this font with Homebrew in run_after_17-install-font-macos */ -}}
-{{- if eq .chezmoi.os "linux" -}}
+{{- /* On macOS, the tools install gets the font from the Homebrew cask */ -}}
+{{- if or (eq .chezmoi.os "linux") (and (eq .chezmoi.os "darwin") (not (index . "tools"))) -}}
 {{-   $fontDir := ".local/share/fonts" -}}
+{{-   if eq .chezmoi.os "darwin" }}{{ $fontDir = "Library/Fonts" }}{{ end -}}
 # A directory entry would make chezmoi own the whole font directory
 # List each font file as its own entry
 {{-   range list "Regular" "Bold" "Italic" "BoldItalic" }}

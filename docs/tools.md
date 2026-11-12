@@ -4,12 +4,12 @@ The tools install adds the programs below. It installs [mise](https://mise.jdx.d
 
 | System | Installer |
 | --- | --- |
-| macOS | Homebrew, installed first when it is missing. mise installs bat, eza, Fish, fzf, gopls, and zoxide as Homebrew formulae |
-| Ubuntu | apt for Fish, Git, and zsh. When the release has Fish 3 or no Fish, the [Fish 4 PPA](https://launchpad.net/~fish-shell/+archive/ubuntu/release-4) is added first. mise for bat, eza, fzf, Go, gopls, and zoxide |
+| macOS | Homebrew, installed first when it is missing. mise installs Antidote, bat, chezmoi, eza, Fish, fzf, gopls, Starship, and zoxide as Homebrew formulae, and MesloLGS Nerd Font as a cask. The setup then removes the chezmoi copy that the one-line install put in `~/.local/bin` |
+| Ubuntu | apt for Fish, Git, and zsh, with Fish from the [Fish 4 PPA](https://launchpad.net/~fish-shell/+archive/ubuntu/release-4). mise for bat, eza, fzf, Go, gopls, and zoxide |
 | Debian | apt for Fish, Git, and zsh. mise for bat, eza, fzf, Go, gopls, and zoxide |
 | Arch, CachyOS, and other Arch-based systems | pacman for Fish, Git, and zsh. mise for bat, eza, fzf, Go, gopls, and zoxide |
 
-mise skips the entries for package managers that the system does not have, and counts formulae that Homebrew already installed. On other Linux systems, only the mise tools install. On Intel Macs, mise skips the Homebrew formulae.
+mise skips the entries for package managers that the system does not have, and counts formulae that Homebrew already installed. On other Linux systems, only the mise tools install. On Intel Macs, mise skips the Homebrew formulae, so the dotfiles install Starship and Antidote there.
 
 After the packages, it installs Fisher and the plugins in [`fish_plugins`](../home/dot_config/fish/fish_plugins). Fisher keeps exactly the plugins in that file. To add a plugin, add it to the file in the chezmoi source and apply.
 

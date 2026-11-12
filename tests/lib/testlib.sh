@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Lightweight assertion helpers for container tests
-set -euo pipefail
+# Assertion helpers for the test suites
+# Each suite sets its own shell options
 
 TEST_PASS=0
 TEST_FAIL=0
@@ -19,26 +19,18 @@ fail() {
     TEST_FAIL=$((TEST_FAIL + 1))
 }
 
-assert_cmd() {
-    local cmd="$1"
-    local success_msg="$2"
-    local fail_msg="$3"
-    if command -v "$cmd" >/dev/null 2>&1; then
-        ok "$success_msg"
-    else
-        fail "$fail_msg"
-    fi
+# check MESSAGE COMMAND...: pass when COMMAND succeeds, with its output hidden
+check() {
+    local message="$1"
+    shift
+    if "$@" >/dev/null 2>&1; then ok "$message"; else fail "$message"; fi
 }
 
-assert_file() {
-    local path="$1"
-    local success_msg="$2"
-    local fail_msg="$3"
-    if [ -f "$path" ]; then
-        ok "$success_msg"
-    else
-        fail "$fail_msg"
-    fi
+# stub DIR NAME LINE...: write the executable shell script DIR/NAME
+stub() {
+    mkdir -p "$1"
+    printf '%s\n' '#!/bin/sh' "${@:3}" > "$1/$2"
+    chmod +x "$1/$2"
 }
 
 assert_nonempty_file() {

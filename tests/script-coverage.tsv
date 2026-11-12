@@ -1,6 +1,5 @@
 # Active chezmoi script template<TAB>Docker suites that exercise it
 home/.chezmoiscripts/run_before_00-create-restore-point.sh.tmpl	minimal,ubuntu,arch
-home/.chezmoiscripts/run_after_17-install-font-macos.sh.tmpl	minimal,ubuntu,arch
 home/.chezmoiscripts/run_after_16-install-antidote.sh.tmpl	minimal,ubuntu,arch
 home/.chezmoiscripts/run_after_12-install-starship.sh.tmpl	minimal,ubuntu,arch
 home/.chezmoiscripts/run_before_00-create-restore-point-windows.ps1.tmpl	powershell
@@ -13,3 +12,4 @@ home/.chezmoiscripts/run_once_after_37-clean-fish-universals.sh.tmpl	ubuntu,arch
 home/.chezmoiscripts/run_once_after_35-clean-fish-files.sh.tmpl	ubuntu,arch
 home/.chezmoiscripts/run_once_before_10-remove-fish-plugin.sh.tmpl	ubuntu,arch
 home/.chezmoiscripts/run_once_after_38-clean-mise-files.sh.tmpl	minimal,ubuntu,arch
+home/.chezmoiscripts/run_once_after_14-remove-fish-ppa-file.sh.tmpl	tools-ubuntu,tools-arch
