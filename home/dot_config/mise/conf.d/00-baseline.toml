@@ -1,4 +1,0 @@
-# Put per-machine tools in ~/.config/mise/config.toml
-
-[settings]
-go_default_packages_file = "~/.config/mise/default-go-packages"

@@ -4,10 +4,10 @@ The tools install adds the programs below. It installs [mise](https://mise.jdx.d
 
 | System | Installer |
 | --- | --- |
-| macOS | Homebrew, installed first when it is missing. mise installs bat, eza, Fish, fzf, and zoxide as Homebrew formulae |
-| Ubuntu | apt for Fish, Git, and zsh. When the release has Fish 3 or no Fish, the [Fish 4 PPA](https://launchpad.net/~fish-shell/+archive/ubuntu/release-4) is added first. mise for bat, eza, fzf, and zoxide |
-| Debian | apt for Fish, Git, and zsh. mise for bat, eza, fzf, and zoxide |
-| Arch, CachyOS, and other Arch-based systems | pacman for Fish, Git, and zsh. mise for bat, eza, fzf, and zoxide |
+| macOS | Homebrew, installed first when it is missing. mise installs bat, eza, Fish, fzf, gopls, and zoxide as Homebrew formulae |
+| Ubuntu | apt for Fish, Git, and zsh. When the release has Fish 3 or no Fish, the [Fish 4 PPA](https://launchpad.net/~fish-shell/+archive/ubuntu/release-4) is added first. mise for bat, eza, fzf, Go, gopls, and zoxide |
+| Debian | apt for Fish, Git, and zsh. mise for bat, eza, fzf, Go, gopls, and zoxide |
+| Arch, CachyOS, and other Arch-based systems | pacman for Fish, Git, and zsh. mise for bat, eza, fzf, Go, gopls, and zoxide |
 
 mise skips the entries for package managers that the system does not have, and counts formulae that Homebrew already installed. On other Linux systems, only the mise tools install. On Intel Macs, mise skips the Homebrew formulae.
 
@@ -23,6 +23,7 @@ On Linux, the setup uses `sudo` only to add the Fish PPA and to install missing 
 | zsh | The zsh setup with Antidote plugins | Your system package manager |
 | eza | `ls`, `ll`, `la`, and `lt` aliases with icons and directory grouping | [Official instructions](https://eza.rocks/) |
 | bat | The configured `cat` alias and Catppuccin theme | [Official instructions](https://github.com/sharkdp/bat#installation) |
+| gopls | The Go language server for Zed. On Linux, mise also installs Go to build gopls | [Official instructions](https://go.dev/gopls/) |
 | zoxide | Directory navigation based on command history | [Official instructions](https://github.com/ajeetdsouza/zoxide#installation) |
 | Fisher | The three tracked Fish plugins | [Official instructions](https://github.com/jorgebucaran/fisher#installation) |
 | fzf | Fuzzy completion and shell key bindings | [Official instructions](https://github.com/junegunn/fzf#installation) |

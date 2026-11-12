@@ -199,7 +199,7 @@ mise_config="$HOME/$MISE_CONFIG"
 manager="$(command -v apt-get >/dev/null && echo apt || echo pacman)"
 mapfile -t expected_packages < <(
     sed -n "s/^\"$manager:\([^\"]*\)\".*/$manager \1/p" "$mise_config"
-    sed -n '/^\[tools\]/,/^\[/s/^\([a-z0-9_-]*\) = .*/mise \1/p' "$mise_config"
+    sed -n '/^\[tools\]/,/^\[/s/^"\{0,1\}\([a-z0-9_:./-]*\)"\{0,1\} = .*/mise \1/p' "$mise_config"
 )
 [ "${#expected_packages[@]}" -gt 0 ] || fail "No packages to check in $mise_config"
 

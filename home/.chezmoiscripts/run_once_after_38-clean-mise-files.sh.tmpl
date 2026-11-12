@@ -1,0 +1,18 @@
+{{- if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+{{ template "common.sh" . }}
+
+# chezmoi keeps a target file after its source file is deleted
+# Older dotfiles wrote these files, and mise warns that the setting is deprecated
+# Delete each file when it still has the content that the dotfiles wrote
+mise_dir="$HOME/.config/mise"
+baseline="$mise_dir/conf.d/00-baseline.toml"
+packages="$mise_dir/default-go-packages"
+if [ -f "$baseline" ] && grep -Fq default-go-packages "$baseline"; then
+    rm -f "$baseline"
+    printf 'Removed %s\n' "$baseline"
+fi
+if [ -f "$packages" ] && [ "$(cat "$packages")" = golang.org/x/tools/gopls ]; then
+    rm -f "$packages"
+    printf 'Removed %s\n' "$packages"
+fi
+{{- end }}
