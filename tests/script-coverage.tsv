@@ -12,4 +12,3 @@ home/.chezmoiscripts/run_once_after_37-clean-fish-universals.sh.tmpl	ubuntu,arch
 home/.chezmoiscripts/run_once_after_35-clean-fish-files.sh.tmpl	ubuntu,arch
 home/.chezmoiscripts/run_once_before_10-remove-fish-plugin.sh.tmpl	ubuntu,arch
 home/.chezmoiscripts/run_once_after_38-clean-mise-files.sh.tmpl	minimal,ubuntu,arch
-home/.chezmoiscripts/run_once_after_14-remove-fish-ppa-file.sh.tmpl	tools-ubuntu,tools-arch

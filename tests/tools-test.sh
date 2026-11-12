@@ -176,6 +176,17 @@ else
     fail "bootstrap script ignored a mise without bootstrap"
 fi
 
+# add-apt-repository writes its own source for the fish 4 PPA
+# Add one, so the install must replace it with the mise source
+ppa_source=''
+codename="$(. /etc/os-release && printf '%s' "${UBUNTU_CODENAME:-}")"
+if [ -n "$codename" ]; then
+    ppa_source="/etc/apt/sources.list.d/fish-shell-ubuntu-release-4-$codename.sources"
+    printf '%s\n' 'Types: deb' 'URIs: https://ppa.launchpadcontent.net/fish-shell/release-4/ubuntu/' \
+        "Suites: $codename" 'Components: main' 'Signed-By: /usr/share/keyrings/other.gpg' |
+        sudo tee "$ppa_source" >/dev/null
+fi
+
 log "Installing the dotfiles with recommended tools..."
 if ! apply_output="$(chezmoi --use-builtin-git=true init --apply \
         --promptBool "$PROMPT=true" file:///dotfiles 2>&1)"; then
@@ -184,6 +195,11 @@ if ! apply_output="$(chezmoi --use-builtin-git=true init --apply \
     print_summary_and_exit
 fi
 ok "chezmoi init --apply with tools succeeded"
+if [ -n "$ppa_source" ]; then
+    assert_absent "$ppa_source" \
+        "The install replaced the add-apt-repository source for the fish 4 PPA" \
+        "The add-apt-repository source for the fish 4 PPA is still present"
+fi
 
 # uninstall removes the mise config
 # Read the expected packages from the mise config now
