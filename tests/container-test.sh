@@ -314,6 +314,22 @@ else
     fi
     check "Zsh syntax highlighting and autosuggestions load at startup" \
         zsh -ic 'typeset -f _zsh_highlight && typeset -f _zsh_autosuggest_start'
+    # fzf before 0.48, as in Ubuntu 24.04, has no --zsh and --fish options
+    # Test the fzf init scripts only when fzf has these options
+    init_tools=(zoxide starship)
+    zsh_tool_init='whence -w __zoxide_z prompt_starship_precmd'
+    fish_tool_init='functions -q __zoxide_z enable_transience'
+    if fzf --zsh >/dev/null 2>&1; then
+        init_tools+=(fzf)
+        zsh_tool_init+=' fzf-history-widget'
+        fish_tool_init+=' fzf_key_bindings; and bind \cr | string match -q "*fzf*"'
+    fi
+    # Start each shell twice to test the init script caches
+    check "Zsh loads ${init_tools[*]}, also from the init caches" \
+        eval 'zsh -ic "$zsh_tool_init" >/dev/null && zsh -ic "$zsh_tool_init" >/dev/null'
+    init_caches=("${init_tools[@]/#/$HOME/.cache/zsh/}")
+    check "Zsh init caches record the tool binary" \
+        eval '[ "$(head -qn 1 "${init_caches[@]/%/-init.zsh}" | grep -c "^# /")" -eq ${#init_tools[@]} ]'
     assert_absent "$HOME/.zsh_plugins.zsh" \
         "Generated Zsh plugin bundle stays in the cache" \
         "Generated Zsh plugin bundle leaked into the home directory"
@@ -331,6 +347,8 @@ else
     }
     check "Fish loads the Starship prompt with no errors, also from its cache" \
         fish_starship_quiet
+    check "Fish loads ${init_tools[*]}, also from the init caches" \
+        eval 'fish -ic "$fish_tool_init" && fish -ic "$fish_tool_init"'
     check "Fish starts without Fisher and has the managed functions" \
         fish -ic 'not functions -q fisher
             and functions -q tarnow psmem wget lt'

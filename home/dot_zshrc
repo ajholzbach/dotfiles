@@ -41,7 +41,6 @@ autoload -Uz compinit
     fi
     [[ $1.zwc -nt $1 ]] || zcompile "$1"
 } "$_dotfiles_zsh_cache/zcompdump"
-unset _dotfiles_zsh_cache
 
 # Lazy-load Conda from CONDA_EXE, PATH, or common macOS and Linux locations
 _dotfiles_conda_roots=(
@@ -67,7 +66,7 @@ if [[ -n ${_dotfiles_conda_exe:-} ]]; then
         unset -f conda
         local conda_hook
         if ! conda_hook="$("$_dotfiles_conda_exe" shell.zsh hook 2>/dev/null)" || \
-                [ -z "$conda_hook" ] || ! eval "$conda_hook"; then
+                [[ -z $conda_hook ]] || ! eval "$conda_hook"; then
             export PATH="${_dotfiles_conda_exe:h}:$PATH"
         fi
         unset _dotfiles_conda_exe
@@ -78,11 +77,8 @@ unset _dotfiles_conda_root _dotfiles_conda_roots
 
 # Lazy-load NVM
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-for _dotfiles_nvm_script in \
-    "$NVM_DIR/nvm.sh" \
-    /opt/homebrew/opt/nvm/nvm.sh \
-    /usr/local/opt/nvm/nvm.sh; do
-    if [ -s "$_dotfiles_nvm_script" ]; then
+for _dotfiles_nvm_script in "$NVM_DIR/nvm.sh" ${HOMEBREW_PREFIX:+"$HOMEBREW_PREFIX/opt/nvm/nvm.sh"}; do
+    if [[ -s $_dotfiles_nvm_script ]]; then
         nvm() {
             unset -f nvm
             . "$_dotfiles_nvm_script"
@@ -97,9 +93,9 @@ if (( ! $+functions[nvm] )); then
 fi
 
 # Add pnpm's home when it exists
-if [ -z "${PNPM_HOME:-}" ]; then
+if [[ -z ${PNPM_HOME:-} ]]; then
     for _dotfiles_pnpm_home in "$HOME/Library/pnpm" "$HOME/.local/share/pnpm"; do
-        if [ -d "$_dotfiles_pnpm_home" ]; then
+        if [[ -d $_dotfiles_pnpm_home ]]; then
             export PNPM_HOME="$_dotfiles_pnpm_home"
             break
         fi
@@ -112,8 +108,25 @@ if (( $+commands[mise] )); then
     eval "$(mise activate zsh)"
 fi
 
-if (( $+commands[zoxide] )); then
-    eval "$(zoxide init zsh --cmd cd)"
+# Tool init commands print the same script each time, but take 5 to 10 ms each
+# Source the script from a cache file, and rebuild the file when the tool binary changes
+zmodload -F zsh/stat b:zstat
+_dotfiles_source_init() {
+    local bin=${commands[$1]:A} cache=$_dotfiles_zsh_cache/$1-init.zsh key line init
+    local -a mtime
+    [[ -n $bin ]] && zstat -A mtime +mtime -- "$bin" || return
+    key="# $bin $mtime"
+    [[ -r $cache ]] && read -r line < "$cache"
+    if [[ $line != "$key" ]]; then
+        init=$("$@" 2>/dev/null) && [[ -n $init ]] || return
+        # Another shell can start while this shell writes the cache
+        # Write a temp file, then rename the temp file to the cache file
+        print -r -- "$key"$'\n'"$init" >| "$cache.$$" && mv -f "$cache.$$" "$cache"
+    fi
+    source "$cache"
+}
+
+if _dotfiles_source_init zoxide init zsh --cmd cd; then
     alias cdo='builtin cd'
 fi
 
@@ -128,24 +141,22 @@ if (( $+commands[eza] )); then
     alias lt='eza -aT --group-directories-first --icons=auto'
 fi
 
-if (( $+commands[fzf] )); then
-    if _dotfiles_fzf_init="$(fzf --zsh 2>/dev/null)"; then
-        eval "$_dotfiles_fzf_init"
-    else
-        [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ] && \
-            source /usr/share/doc/fzf/examples/key-bindings.zsh
-        [ -f /usr/share/doc/fzf/examples/completion.zsh ] && \
-            source /usr/share/doc/fzf/examples/completion.zsh
-    fi
-    unset _dotfiles_fzf_init
+# fzf before 0.48 has no --zsh option, but Debian and Ubuntu ship its scripts
+# Use those scripts when fzf --zsh fails
+if (( $+commands[fzf] )) && ! _dotfiles_source_init fzf --zsh; then
+    for _dotfiles_fzf_script in /usr/share/doc/fzf/examples/{key-bindings,completion}.zsh; do
+        [[ -f $_dotfiles_fzf_script ]] && source "$_dotfiles_fzf_script"
+    done
+    unset _dotfiles_fzf_script
 fi
 
-if (( $+commands[starship] )); then
-    eval "$(starship init zsh)"
+if _dotfiles_source_init starship init zsh; then
     # starship.toml has no right_format, but the right prompt still runs starship
     # Clear the right prompt
     RPROMPT=''
 fi
+unfunction _dotfiles_source_init
+unset _dotfiles_zsh_cache
 
 # The OMZ git plugin aliases expect this OMZ lib function
 git_current_branch() {
@@ -158,7 +169,7 @@ git_current_branch() {
 _dotfiles_antidote="$HOME/.antidote/antidote.zsh"
 [[ -f $_dotfiles_antidote || -z ${HOMEBREW_PREFIX:-} ]] ||
     _dotfiles_antidote="$HOMEBREW_PREFIX/opt/antidote/share/antidote/antidote.zsh"
-if [ -f "$_dotfiles_antidote" ]; then
+if [[ -f $_dotfiles_antidote ]]; then
     # Rebuild the cached bundle only when the plugin list changes
     _dotfiles_plugins_txt="${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
     _dotfiles_plugins_bundle="${XDG_CACHE_HOME:-$HOME/.cache}/antidote/zsh_plugins.zsh"
@@ -170,7 +181,7 @@ if [ -f "$_dotfiles_antidote" ]; then
         zstyle ':antidote:bundle:*' defer-options '-a'
         _dotfiles_plugins_tmp="${_dotfiles_plugins_bundle}.tmp.$$"
         if antidote bundle < "$_dotfiles_plugins_txt" > "$_dotfiles_plugins_tmp" && \
-                [ -s "$_dotfiles_plugins_tmp" ]; then
+                [[ -s $_dotfiles_plugins_tmp ]]; then
             mv -f "$_dotfiles_plugins_tmp" "$_dotfiles_plugins_bundle"
         else
             rm -f "$_dotfiles_plugins_tmp"
@@ -178,7 +189,7 @@ if [ -f "$_dotfiles_antidote" ]; then
         fi
         unset _dotfiles_plugins_tmp
     fi
-    [ -s "$_dotfiles_plugins_bundle" ] && source "$_dotfiles_plugins_bundle"
+    [[ -s $_dotfiles_plugins_bundle ]] && source "$_dotfiles_plugins_bundle"
     unset _dotfiles_plugins_txt _dotfiles_plugins_bundle
 fi
 unset _dotfiles_antidote

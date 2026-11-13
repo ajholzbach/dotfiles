@@ -27,6 +27,14 @@ DOTFILES_LOADING_LOCAL_ENV=1 XDG_CONFIG_HOME="$HOME/.config" "$fish_bin" -c '
         set -a files $frozen
     end
 
+    # Older dotfiles lazy-loaded zoxide and fzf here, and config.fish now loads both
+    # Move the old loader files
+    for loader in $fish_dir/conf.d/{zoxide,fzf}.fish
+        if test -f $loader; and string match -qr -- "^function __(zoxide|fzf)_load" <$loader
+            set -a files $loader
+        end
+    end
+
     # Move each file to the backup folder, or delete the file when a backup exists
     for file in $files
         set -l saved $argv[1]/(string replace -- $fish_dir/ "" $file)

@@ -19,8 +19,18 @@ if [ ! -x "$mise_bin" ]; then
     MISE_INSTALL_PATH="$MISE_PATH" sh "$installer"
     mise_bin="$MISE_PATH"
 fi
-"$mise_bin" bootstrap --help >/dev/null 2>&1 || \
-    die "mise $("$mise_bin" --version) has no bootstrap command. Update mise, then apply again."
+
+# An older mise ignores [bootstrap.apt.sources], which came in mise 2026.10.9
+# Update an older mise, or stop when it cannot update itself
+mise_version() {
+    "$mise_bin" --version 2>/dev/null | awk 'NR == 1 { split($1, v, "."); printf "%d%03d%03d\n", v[1], v[2], v[3] } END { if (NR == 0) print 0 }'
+}
+if [ "$(mise_version)" -lt 2026010009 ]; then
+    printf 'Updating mise %s...\n' "$("$mise_bin" --version 2>/dev/null)"
+    "$mise_bin" self-update --yes || true
+    [ "$(mise_version)" -ge 2026010009 ] ||
+        die "mise $("$mise_bin" --version 2>/dev/null) is older than 2026.10.9. Update mise, then apply again."
+fi
 {{- if eq .chezmoi.os "linux" }}
 
 # apt fails when another source for the fish 4 PPA has a different Signed-By

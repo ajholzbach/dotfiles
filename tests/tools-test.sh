@@ -125,7 +125,8 @@ log "Checking the bootstrap script against a mock mise..."
 for os in linux darwin; do
     mocks="$(mock_dir)"
     stub "$mocks" brew 'exit 0'
-    stub "$mocks" mise 'printf "%s %s\n" "$XDG_CONFIG_HOME" "$*" >> "$MOCK_LOG"'
+    stub "$mocks" mise '[ "$1" != --version ] || { echo 2026.11.6; exit; }' \
+        'printf "%s %s\n" "$XDG_CONFIG_HOME" "$*" >> "$MOCK_LOG"'
     render "{\"tools\":true,\"chezmoi\":{\"os\":\"$os\"}}" "${TOOL_TARGETS[0]}" > "$mocks/install.sh"
     if HOME="$mocks" MOCK_LOG="$mocks/log" PATH="$mocks:$PATH" sh "$mocks/install.sh" >/dev/null &&
             [ "$(tail -n 1 "$mocks/log")" = "$mocks/.config bootstrap --only packages,tools --yes" ]; then
@@ -141,7 +142,7 @@ mocks="$(mock_dir)"
 stub "$mocks/brew-prefix/bin" chezmoi 'exit 0'
 stub "$mocks/.local/bin" chezmoi 'exit 0'
 stub "$mocks" brew "echo '$mocks/brew-prefix'"
-stub "$mocks" mise 'exit 0'
+stub "$mocks" mise '[ "$1" != --version ] || echo 2026.11.6'
 render '{"tools":true,"chezmoi":{"os":"darwin"}}' "${TOOL_TARGETS[0]}" > "$mocks/install.sh"
 if HOME="$mocks" PATH="$mocks:$PATH" sh "$mocks/install.sh" >/dev/null &&
         [ ! -e "$mocks/.local/bin/chezmoi" ]; then
@@ -166,14 +167,27 @@ else
     fail "macOS with tools still renders a dotfiles installer that Homebrew replaces"
 fi
 
-# A mise without bootstrap stops the apply with a recovery hint
+# A mise older than 2026.10.9 ignores [bootstrap.apt.sources]
+# The bootstrap script updates it first
+stub "$mocks" mise \
+    '[ "$1" != --version ] || { [ -e "$HOME/updated" ] && echo 2026.11.6 || echo 2026.10.8; exit; }' \
+    '[ "$1" != self-update ] || { touch "$HOME/updated"; exit; }' \
+    'printf "%s\n" "$*" >> "$HOME/log"'
+if HOME="$mocks" PATH="$mocks:$PATH" sh "$mocks/install.sh" >/dev/null 2>&1 &&
+        [ -e "$mocks/updated" ] && grep -Fqx 'bootstrap --only packages,tools --yes' "$mocks/log"; then
+    ok "bootstrap script updates a mise older than 2026.10.9, then runs bootstrap"
+else
+    fail "bootstrap script did not update an old mise before bootstrap"
+fi
+
+# A mise that cannot update itself stops the apply with a recovery hint
 stub "$mocks" mise '[ "$1" = --version ] && echo 2024.1.0' 'exit 2'
 if ! mock_output="$(HOME="$mocks" PATH="$mocks:$PATH" sh "$mocks/install.sh" 2>&1)" &&
-        grep -Fq 'has no bootstrap command' <<< "$mock_output" &&
+        grep -Fq 'is older than 2026.10.9' <<< "$mock_output" &&
         grep -Fq "$PROMPT=false" <<< "$mock_output"; then
     ok "bootstrap script stops with a recovery hint when mise is too old"
 else
-    fail "bootstrap script ignored a mise without bootstrap"
+    fail "bootstrap script ignored a mise that is too old"
 fi
 
 # add-apt-repository writes its own source for the fish 4 PPA

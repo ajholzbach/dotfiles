@@ -29,20 +29,24 @@ See [docs/install.md](docs/install.md) for the dotfiles-only install, Windows, a
 
 ## Managed configuration
 
-| Program | Configuration |
+This section lists the main changes. The files in [`home/`](home/) have the full configuration.
+
+- [Starship](https://starship.rs/) gives Bash, zsh, Fish, Xonsh, and PowerShell the same prompt.
+- zsh gets autosuggestions and syntax highlighting from [Antidote](https://github.com/mattmc3/antidote) plugins, plus cached completion and shared history.
+- Fish gets the Catppuccin Mocha theme, extra completions, and the [Fish plugins](#fish-plugins).
+- Shell startup is tuned for speed. Conda and NVM load on first use, zsh and Fish cache the Starship, zoxide, and fzf init scripts, and zsh caches its plugin bundle and completion dump.
+- [mise](https://mise.jdx.dev/) activates in every shell.
+
+These tools integrate with Bash, zsh, Fish, and Xonsh, unless the table says otherwise:
+
+| Tool | Integration |
 | --- | --- |
-| Bash | Shared `.profile`, local environment, and guarded tool integrations |
-| zsh | Completion, history, lazy Conda and NVM, and Antidote plugins |
-| Fish | Lazy zoxide, fzf, and Conda, the `wget`, `tarnow`, `untar`, and `psmem` helpers, extra completions, the Catppuccin Mocha theme, and the Fisher plugin list |
-| Xonsh | Guarded integrations, lazy Conda, and Git aliases |
-| PowerShell | One shared profile for PowerShell 7 and Windows PowerShell |
-| [eza](https://eza.rocks/) | `ls`, `ll`, `la`, and `lt` aliases with icons and directory grouping |
-| [bat](https://github.com/sharkdp/bat) | `cat` alias and Catppuccin theme |
-| [zoxide](https://github.com/ajeetdsouza/zoxide), [fzf](https://github.com/junegunn/fzf), [mise](https://mise.jdx.dev/) | Shell integration |
-| [Ghostty](https://ghostty.org/), [Zed](https://zed.dev/) | Catppuccin Mocha and MesloLGS Nerd Font |
-| Vim, tmux | Configuration |
-| btop | Catppuccin Mocha theme |
-| Other tools | Small configuration changes, such as the Catppuccin Mocha theme |
+| [zoxide](https://github.com/ajeetdsouza/zoxide) | `cd` jumps to frequent directories. In Bash and zsh, `cdo` runs the built-in `cd`. |
+| [bat](https://github.com/sharkdp/bat) | `cat` shows syntax highlighting. |
+| [eza](https://eza.rocks/) | `ls`, `ll`, `la`, and `lt` show icons and list directories first. zsh and Fish only. |
+| [fzf](https://github.com/junegunn/fzf) | Ctrl+R, Ctrl+T, and Alt+C search history, files, and directories. zsh and Fish only. |
+
+Other programs, such as [Ghostty](https://ghostty.org/), [Zed](https://zed.dev/), tmux, Vim, zellij, btop, and Git, get small configuration changes, mostly the Catppuccin Mocha theme and MesloLGS Nerd Font.
 
 Each integration activates only when its program is installed.
 

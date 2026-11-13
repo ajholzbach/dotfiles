@@ -28,7 +28,7 @@ end
 set -e brew_prefix
 
 if status is-interactive
-    set -g fish_greeting ""
+    set -g fish_greeting
     # fish_config is too slow to load the theme at startup
     # chezmoi copies each color line from themes/Catppuccin Mocha.theme here
 {{- range include "dot_config/fish/themes/Catppuccin Mocha.theme" | splitList "\n" }}
@@ -37,30 +37,19 @@ if status is-interactive
 {{-   end }}
 {{- end }}
 
-    if set -l starship (command -s starship)
-        # starship init prints the same script each time, but takes 7 ms
-        # Save the script to a cache file, and source the cache file next time
-        set -l cache $__fish_user_data_dir/starship-init.fish
-        # The first cache line records the starship path and modified time
-        # Rebuild the cache when either value changes, for example on upgrade
-        set -l key "# $starship "(path mtime $starship)
-        set -l line
-        test -f $cache; and read line <$cache
-        if test "$line" != "$key"; and set -l init ($starship init fish --print-full-init)
-            mkdir -p $__fish_user_data_dir
-            # Another shell can start while this shell writes the cache
-            # Write a temp file, then rename the temp file to the cache file
-            printf '%s\n' $key $init >$cache.$fish_pid; and mv $cache.$fish_pid $cache
-        end
-        test -f $cache; and source $cache
+    # mise can provide zoxide and fzf
+    # Activate mise before the tool init scripts run
+    if type -q mise
+        mise activate fish | source
+    end
+    if __dotfiles_source_init starship init fish --print-full-init
         functions -q enable_transience; and enable_transience
         # starship.toml has no right_format, but the right prompt still runs starship
         # Remove the right prompt
         functions -e fish_right_prompt
     end
-    if type -q mise
-        mise activate fish | source
-    end
+    __dotfiles_source_init zoxide init --cmd cd fish
+    __dotfiles_source_init fzf --fish
     if type -q orb
         source ~/.orbstack/shell/init2.fish 2>/dev/null || :
     end
