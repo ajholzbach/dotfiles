@@ -12,7 +12,7 @@ if [[ ! -o login && -f $HOME/.profile ]]; then
 fi
 
 typeset -U path fpath
-[[ -n ${HOMEBREW_PREFIX:-} ]] && fpath=("$HOMEBREW_PREFIX/share/zsh/site-functions" $fpath)
+fpath=("$HOME/.local/share/zsh/site-functions" ${HOMEBREW_PREFIX:+"$HOMEBREW_PREFIX/share/zsh/site-functions"} $fpath)
 
 # History and completion settings from OMZ lib
 HISTFILE=${HISTFILE:-${ZDOTDIR:-$HOME}/.zsh_history}

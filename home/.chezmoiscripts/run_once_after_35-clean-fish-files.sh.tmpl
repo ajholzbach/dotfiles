@@ -13,8 +13,12 @@ BACKUP="$STATE_ROOT/fish-files-backup"
 DOTFILES_LOADING_LOCAL_ENV=1 XDG_CONFIG_HOME="$HOME/.config" "$fish_bin" -c '
     set -l fish_dir (path normalize $__fish_config_dir)
     # Older dotfiles wrote these copies, and the copies hide newer completions
-    # Move the old completion copies
-    set -l files (path filter $fish_dir/completions/{chezmoi,fd,mise,rg}.fish)
+    # Move the old completion copies, but keep the dotfiles loaders that run the tool
+    set -l files
+    for copy in (path filter $fish_dir/completions/{chezmoi,fd,mise,rg}.fish)
+        read -l first <$copy
+        string match -q -- "command --query *" $first; or set -a files $copy
+    end
     # An older Fisher sync renamed the OrbStack kubectl.fish link to these names
     # Move the kubectl.fish backups
     set -a files $fish_dir/completions/kubectl.fish.pre-fisher-backup*

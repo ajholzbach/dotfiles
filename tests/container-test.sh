@@ -425,11 +425,15 @@ else
     check "bat loads its managed configuration and vendored theme" bat "$HOME/.bashrc"
 
     rm -f "$mock_dir"/*
+    # The zsh mock completion follows the funcstack check that mise prints
+    # shellcheck disable=SC2016 # Expanded by the mock shells.
     stub "$mock_dir" mise \
-        'case "${2:-}" in' \
-        '  bash|zsh) echo "export DOTFILES_MISE_MOCK=1" ;;' \
-        '  fish) echo "set -gx DOTFILES_MISE_MOCK 1" ;;' \
-        "  xonsh) echo \"\\\$DOTFILES_MISE_MOCK = '1'\" ;;" \
+        'case "$1 ${2:-}" in' \
+        '  "activate bash"|"activate zsh") echo "export DOTFILES_MISE_MOCK=1" ;;' \
+        '  "activate fish") echo "set -gx DOTFILES_MISE_MOCK 1" ;;' \
+        "  \"activate xonsh\") echo \"\\\$DOTFILES_MISE_MOCK = '1'\" ;;" \
+        '  "completion zsh") echo '\''_mise() { print -r -- mise-mock-word; }; if [ "$funcstack[1]" = _mise ]; then _mise "$@"; else compdef _mise mise; fi'\'' ;;' \
+        '  "completion fish") echo "complete -c mise -f -a mise-mock-word" ;;' \
         '  *) exit 2 ;;' \
         'esac'
     mise_shells() {
@@ -440,6 +444,15 @@ else
             env "$mise_path" xonsh -i -c 'assert $DOTFILES_MISE_MOCK == "1"; exit'
     }
     check "Optional mise activation works in Bash, Zsh, Fish, and Xonsh" mise_shells
+    # Calling _mise directly runs the completion function that mise prints, exactly once
+    assert_equal mise-mock-word \
+        "$(PATH="$mock_dir:$PATH" zsh -ic '[[ $_comps[mise] = _mise ]] && _mise' 2>/dev/null)" \
+        "Zsh loads the mise completions from mise" \
+        "Zsh did not load the mise completions from mise"
+    assert_equal mise-mock-word \
+        "$(PATH="$mock_dir:$PATH" fish -ic 'complete -C "mise "' 2>/dev/null)" \
+        "Fish loads the mise completions from mise" \
+        "Fish did not load the mise completions from mise"
     rm -rf "$mock_dir"
 
     check "Vim configuration loads" vim -Nu "$HOME/.vimrc" -n -es '+qall'

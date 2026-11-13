@@ -1,0 +1,8 @@
+#compdef mise
+# mise prints a completion function that asks mise for each completion
+# Define that function on the first completion, so it matches the installed mise
+(( $+commands[mise] )) || return 1
+# The printed script completes only when funcstack[1] is _mise, and eval_lineno puts (eval) there
+# Turn off eval_lineno, then run the printed script
+setopt local_options no_eval_lineno
+eval "$(mise completion zsh)"
