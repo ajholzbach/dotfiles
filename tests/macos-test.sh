@@ -52,10 +52,10 @@ check 'Fisher installed every plugin' \
     sh -c "[ \"\$(fish -c 'fisher list' | sort)\" = \"\$(sort '$HOME/.config/fish/fish_plugins')\" ]"
 check '.bash_profile keeps the other block' grep -Fqx 'export OTHER_TOOL=1' "$HOME/.bash_profile"
 check 'zsh interactive startup succeeds' zsh -ic exit
-zsh_bundle="$HOME/.cache/antidote/zsh_plugins.zsh"
-check 'zsh loads Antidote plugins from Homebrew' test -s "$zsh_bundle"
-printf '%s\n' 'source "$HOME/missing-antidote-plugin.zsh"' > "$zsh_bundle"
-check 'zsh rebuilds the Antidote bundle when a plugin is missing' \
+antidote_home="$HOME/.local/share/antidote"
+check 'zsh loads Antidote plugins from Homebrew' test -s "$antidote_home/zsh_plugins.zsh"
+rm -rf "$antidote_home"
+check 'zsh clones the plugins again when the Antidote home is gone' \
     zsh -ic '(( $+functions[zsh-defer] && $+functions[_zsh_autosuggest_start] && $+functions[_zsh_highlight] ))'
 check 'bash login startup finds Starship' bash -lc 'command -v starship'
 check 'Fish loads Catppuccin' sh -c "fish -ic 'echo \$fish_color_command' | grep -qx 89b4fa"

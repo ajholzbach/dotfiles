@@ -1,3 +1,6 @@
+# kind:defer needs zsh-defer, and Antidote reports a failed clone only for listed plugins
+romkatv/zsh-defer
+
 # .zshrc defines the OMZ lib functions that the aliases need
 # Load the OMZ git aliases
 ohmyzsh/ohmyzsh path:plugins/git kind:defer

@@ -7,6 +7,7 @@
 #                 ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝
 # """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
+
 if [[ ! -o login && -f $HOME/.profile ]]; then
     source "$HOME/.profile"
 fi
@@ -21,88 +22,59 @@ HISTSIZE=60000
 SAVEHIST=50000
 setopt extended_history hist_expire_dups_first hist_ignore_dups \
        hist_ignore_space hist_verify share_history
-setopt auto_menu complete_in_word always_to_end
-_dotfiles_zsh_cache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+setopt complete_in_word always_to_end
 zstyle ':completion:*' menu select
 zstyle ':completion:*' special-dirs true
 zstyle ':completion:*' use-cache yes
-zstyle ':completion:*' cache-path "$_dotfiles_zsh_cache"
 
 # Run the slow compaudit check at most once a day
-[[ -d $_dotfiles_zsh_cache ]] || mkdir -p "$_dotfiles_zsh_cache"
 autoload -Uz compinit
 () {
     setopt local_options extended_glob
-    if [[ -n $1(#qN.mh-24) ]]; then
-        compinit -C -d "$1"
+    local dump=$1/zcompdump
+    zstyle ':completion:*' cache-path "$1"
+    [[ -d $1 ]] || mkdir -p "$1"
+    if [[ -n $dump(#qN.mh-24) ]]; then
+        compinit -C -d "$dump"
     else
-        compinit -d "$1"
-        touch "$1"
+        compinit -d "$dump"
+        touch "$dump"
     fi
-    [[ $1.zwc -nt $1 ]] || zcompile "$1"
-} "$_dotfiles_zsh_cache/zcompdump"
+    [[ $dump.zwc -nt $dump ]] || zcompile "$dump"
+} "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 
 # Lazy-load Conda from CONDA_EXE, PATH, or common macOS and Linux locations
-_dotfiles_conda_roots=(
-    "$HOME/miniforge3" "$HOME/miniconda3" "$HOME/anaconda3" "$HOME/mambaforge"
-    /opt/miniforge3 /opt/miniconda3 /opt/anaconda3 /opt/conda
-)
-[[ -n ${HOMEBREW_PREFIX:-} ]] &&
-    _dotfiles_conda_roots+=("$HOMEBREW_PREFIX"/Caskroom/{miniforge,miniconda,mambaforge,anaconda}/base)
-if [[ -x ${CONDA_EXE:-} ]]; then
-    _dotfiles_conda_exe=$CONDA_EXE
-elif (( $+commands[conda] )); then
-    _dotfiles_conda_exe=$commands[conda]
-else
-    for _dotfiles_conda_root in $_dotfiles_conda_roots; do
-        if [[ -x $_dotfiles_conda_root/bin/conda ]]; then
-            _dotfiles_conda_exe=$_dotfiles_conda_root/bin/conda
-            break
-        fi
-    done
-fi
-if [[ -n ${_dotfiles_conda_exe:-} ]]; then
+() {
+    (( $# )) || return
+    typeset -g _dotfiles_conda_exe=$1
     conda() {
         unset -f conda
-        local conda_hook
-        if ! conda_hook="$("$_dotfiles_conda_exe" shell.zsh hook 2>/dev/null)" || \
-                [[ -z $conda_hook ]] || ! eval "$conda_hook"; then
-            export PATH="${_dotfiles_conda_exe:h}:$PATH"
-        fi
+        local hook
+        hook=$("$_dotfiles_conda_exe" shell.zsh hook 2>/dev/null) && [[ -n $hook ]] && eval "$hook" ||
+            path=("${_dotfiles_conda_exe:h}" $path)
         unset _dotfiles_conda_exe
         conda "$@"
     }
-fi
-unset _dotfiles_conda_root _dotfiles_conda_roots
+} ${CONDA_EXE:+$CONDA_EXE(N-*)} $commands[conda] \
+    {$HOME,/opt}/{miniforge3,miniconda3,anaconda3,mambaforge}/bin/conda(N-*) /opt/conda/bin/conda(N-*) \
+    ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/Caskroom/{miniforge,miniconda,mambaforge,anaconda}/base/bin/conda(N-*)}
 
 # Lazy-load NVM
-export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-for _dotfiles_nvm_script in "$NVM_DIR/nvm.sh" ${HOMEBREW_PREFIX:+"$HOMEBREW_PREFIX/opt/nvm/nvm.sh"}; do
-    if [[ -s $_dotfiles_nvm_script ]]; then
-        nvm() {
-            unset -f nvm
-            . "$_dotfiles_nvm_script"
-            unset _dotfiles_nvm_script
-            nvm "$@"
-        }
-        break
-    fi
-done
-if (( ! $+functions[nvm] )); then
-    unset _dotfiles_nvm_script
-fi
+export NVM_DIR=${NVM_DIR:-$HOME/.nvm}
+() {
+    (( $# )) || return
+    typeset -g _dotfiles_nvm_script=$1
+    nvm() {
+        unset -f nvm
+        . "$_dotfiles_nvm_script"
+        unset _dotfiles_nvm_script
+        nvm "$@"
+    }
+} $NVM_DIR/nvm.sh(N-.L+0) ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/opt/nvm/nvm.sh(N-.L+0)}
 
 # Add pnpm's home when it exists
-if [[ -z ${PNPM_HOME:-} ]]; then
-    for _dotfiles_pnpm_home in "$HOME/Library/pnpm" "$HOME/.local/share/pnpm"; do
-        if [[ -d $_dotfiles_pnpm_home ]]; then
-            export PNPM_HOME="$_dotfiles_pnpm_home"
-            break
-        fi
-    done
-    unset _dotfiles_pnpm_home
-fi
-[[ -n ${PNPM_HOME:-} ]] && path=("$PNPM_HOME" $path)
+[[ -n $PNPM_HOME ]] || () { (( $# )) && export PNPM_HOME=$1 } $HOME/{Library,.local/share}/pnpm(N/)
+[[ -n $PNPM_HOME ]] && path=("$PNPM_HOME" $path)
 
 if (( $+commands[mise] )); then
     eval "$(mise activate zsh)"
@@ -112,13 +84,17 @@ fi
 # Source the script from a cache file, and rebuild the file when the tool binary changes
 zmodload -F zsh/stat b:zstat
 _dotfiles_source_init() {
-    local bin=${commands[$1]:A} cache=$_dotfiles_zsh_cache/$1-init.zsh key line init
+    local bin=${commands[$1]:A} cache=${XDG_CACHE_HOME:-$HOME/.cache}/zsh/$1-init.zsh key line init
     local -a mtime
     [[ -n $bin ]] && zstat -A mtime +mtime -- "$bin" || return
     key="# $bin $mtime"
     [[ -r $cache ]] && read -r line < "$cache"
     if [[ $line != "$key" ]]; then
         init=$("$@" 2>/dev/null) && [[ -n $init ]] || return
+        # Starship runs a 7 ms subprocess to set PROMPT2
+        # Quote the command, so the prompt runs it only when it shows PROMPT2
+        init=${init/PROMPT2=\"\$\(/PROMPT2=\'\$\(}
+        init=${init/--continuation\)\"/--continuation)\'}
         # Another shell can start while this shell writes the cache
         # Write a temp file, then rename the temp file to the cache file
         print -r -- "$key"$'\n'"$init" >| "$cache.$$" && mv -f "$cache.$$" "$cache"
@@ -144,8 +120,8 @@ fi
 # fzf before 0.48 has no --zsh option, but Debian and Ubuntu ship its scripts
 # Use those scripts when fzf --zsh fails
 if (( $+commands[fzf] )) && ! _dotfiles_source_init fzf --zsh; then
-    for _dotfiles_fzf_script in /usr/share/doc/fzf/examples/{key-bindings,completion}.zsh; do
-        [[ -f $_dotfiles_fzf_script ]] && source "$_dotfiles_fzf_script"
+    for _dotfiles_fzf_script in /usr/share/doc/fzf/examples/{key-bindings,completion}.zsh(N); do
+        source "$_dotfiles_fzf_script"
     done
     unset _dotfiles_fzf_script
 fi
@@ -156,7 +132,6 @@ if _dotfiles_source_init starship init zsh; then
     RPROMPT=''
 fi
 unfunction _dotfiles_source_init
-unset _dotfiles_zsh_cache
 
 # The OMZ git plugin aliases expect this OMZ lib function
 git_current_branch() {
@@ -164,52 +139,29 @@ git_current_branch() {
         command git rev-parse --short HEAD 2>/dev/null
 }
 
-# zsh-syntax-highlighting must wrap every widget
-# Load Antidote last, from ~/.antidote or from Homebrew on macOS with tools
-_dotfiles_antidote="$HOME/.antidote/antidote.zsh"
-[[ -f $_dotfiles_antidote || -z ${HOMEBREW_PREFIX:-} ]] ||
-    _dotfiles_antidote="$HOMEBREW_PREFIX/opt/antidote/share/antidote/antidote.zsh"
-if [[ -f $_dotfiles_antidote ]]; then
-    _dotfiles_plugins_ready() {
-        local line plugin
-        [[ -s $1 ]] || return 1
-        # Antidote emits quoted paths for direct and deferred sources.
-        while IFS=$' \t' read -r line; do
-            case $line in
-                (source\ \"*\"|zsh-defer\ *source\ \"*\")
-                    plugin=${line#*source \"}
-                    plugin=${plugin%\"}
-                    plugin=${plugin/#\$HOME\//$HOME/}
-                    [[ $plugin != /* || ( -f $plugin && -r $plugin ) ]] || return 1
-                    ;;
-            esac
-        done < "$1"
-        return 0
-    }
-    _dotfiles_plugins_txt="${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
-    _dotfiles_plugins_bundle="${XDG_CACHE_HOME:-$HOME/.cache}/antidote/zsh_plugins.zsh"
-    if [[ $_dotfiles_plugins_bundle -nt $_dotfiles_plugins_txt ]] &&
-            _dotfiles_plugins_ready "$_dotfiles_plugins_bundle"; then
-        source "$_dotfiles_plugins_bundle"
-    else
-        mkdir -p "${_dotfiles_plugins_bundle:h}"
-        source "$_dotfiles_antidote"
-        zstyle ':antidote:bundle:*' zcompile yes
-        # Defer only the plugin load, and skip the prompt hooks and redraw
-        zstyle ':antidote:bundle:*' defer-options '-a'
-        _dotfiles_plugins_tmp="${_dotfiles_plugins_bundle}.tmp.$$"
-        if antidote bundle < "$_dotfiles_plugins_txt" > "$_dotfiles_plugins_tmp" && \
-                _dotfiles_plugins_ready "$_dotfiles_plugins_tmp" && \
-                mv -f "$_dotfiles_plugins_tmp" "$_dotfiles_plugins_bundle"; then
-            source "$_dotfiles_plugins_bundle"
-        else
-            rm -f "$_dotfiles_plugins_tmp"
-            print -u2 'Warning: Antidote could not refresh the plugin bundle.'
-            _dotfiles_plugins_ready "$_dotfiles_plugins_bundle" && source "$_dotfiles_plugins_bundle"
-        fi
-        unset _dotfiles_plugins_tmp
-    fi
-    unfunction _dotfiles_plugins_ready
-    unset _dotfiles_plugins_txt _dotfiles_plugins_bundle
+# zsh-syntax-highlighting must wrap every widget, so load the plugins last
+# macOS can purge ~/Library/Caches, so keep the clones in the data directory
+# Keep the bundle with the clones, so a lost clone directory also loses the bundle
+_dotfiles_antidote_home=${XDG_DATA_HOME:-$HOME/.local/share}/antidote
+zstyle ':antidote:home' dir "$_dotfiles_antidote_home"
+zstyle ':antidote:static' file "$_dotfiles_antidote_home/zsh_plugins.zsh"
+zstyle ':antidote:bundle:*' zcompile yes
+# Defer only the plugin load, and skip the prompt hooks and redraw
+zstyle ':antidote:bundle:*' defer-options '-a'
+
+# Loading Antidote takes 4 ms, so load it from ~/.antidote or Homebrew on its first use
+() {
+    (( $# )) || return
+    functions[antidote]="unfunction antidote; source ${(q)1}; antidote \"\$@\""
+} $HOME/.antidote/antidote.zsh(N) ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/opt/antidote/share/antidote/antidote.zsh(N)}
+
+# antidote load rebuilds the bundle when the plugin list changes or antidote update removes .antidote.load
+# In other cases, source the bundle without Antidote
+if [[ $_dotfiles_antidote_home/zsh_plugins.zsh -nt ${ZDOTDIR:-$HOME}/.zsh_plugins.txt &&
+        -e $_dotfiles_antidote_home/.antidote.load ]]; then
+    source "$_dotfiles_antidote_home/zsh_plugins.zsh"
+elif (( $+functions[antidote] )); then
+    # On failure, antidote load sources the previous bundle and tries again at the next start
+    antidote load || print -u2 'Warning: Antidote could not refresh the plugin bundle.'
 fi
-unset _dotfiles_antidote
+unset _dotfiles_antidote_home

@@ -306,7 +306,7 @@ else
 
     check "Zsh configuration parses, starts, and initializes completion" \
         eval 'zsh -n "$HOME/.zshrc" && zsh -ic "whence -w compdef"'
-    zsh_bundle="$HOME/.cache/antidote/zsh_plugins.zsh"
+    zsh_bundle="$HOME/.local/share/antidote/zsh_plugins.zsh"
     if grep -Fq zsh-syntax-highlighting "$zsh_bundle" && grep -Fq zsh-autosuggestions "$zsh_bundle"; then
         ok "Antidote generated syntax-highlighting and autosuggestion plugins"
     else
