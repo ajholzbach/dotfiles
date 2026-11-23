@@ -33,6 +33,20 @@ brew install chezmoi
 chezmoi init --apply ajholzbach
 ```
 
+## Clone over SSH
+
+chezmoi clones this repository over HTTPS, so a push needs a GitHub token. On a device that pushes to GitHub over SSH, add `--ssh` to the `init` command:
+
+```sh
+sh -c "$(curl --proto '=https' --tlsv1.2 -fsSL https://get.chezmoi.io/lb)" -- init --apply --ssh --promptBool tools=true ajholzbach
+```
+
+To make an existing install fetch and push over SSH, set the URL of the `origin` remote:
+
+```sh
+chezmoi git -- remote set-url origin git@github.com:ajholzbach/dotfiles.git
+```
+
 ## Change the install type
 
 ```sh

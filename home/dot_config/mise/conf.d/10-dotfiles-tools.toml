@@ -17,6 +17,11 @@ go = { version = "latest", os = ["linux"] }
 [bootstrap.apt.sources]
 fish-shell-release-4 = { ppa = "fish-shell/release-4", fingerprint = "88421E703EDC7AF54967DED473C9FCC9E2BB48DA" }
 
+# Homebrew skips casks that mise installs without Homebrew metadata
+# Write the metadata, so brew list and brew upgrade see the font
+[bootstrap.brew]
+homebrew_metadata = true
+
 # mise skips entries for package managers that this system does not have
 [bootstrap.packages]
 # On macOS, Homebrew also provides chezmoi, Starship, Antidote, and the font
