@@ -170,10 +170,28 @@ _dotfiles_antidote="$HOME/.antidote/antidote.zsh"
 [[ -f $_dotfiles_antidote || -z ${HOMEBREW_PREFIX:-} ]] ||
     _dotfiles_antidote="$HOMEBREW_PREFIX/opt/antidote/share/antidote/antidote.zsh"
 if [[ -f $_dotfiles_antidote ]]; then
-    # Rebuild the cached bundle only when the plugin list changes
+    _dotfiles_plugins_ready() {
+        local line plugin
+        [[ -s $1 ]] || return 1
+        # Antidote emits quoted paths for direct and deferred sources.
+        while IFS=$' \t' read -r line; do
+            case $line in
+                (source\ \"*\"|zsh-defer\ *source\ \"*\")
+                    plugin=${line#*source \"}
+                    plugin=${plugin%\"}
+                    plugin=${plugin/#\$HOME\//$HOME/}
+                    [[ $plugin != /* || ( -f $plugin && -r $plugin ) ]] || return 1
+                    ;;
+            esac
+        done < "$1"
+        return 0
+    }
     _dotfiles_plugins_txt="${ZDOTDIR:-$HOME}/.zsh_plugins.txt"
     _dotfiles_plugins_bundle="${XDG_CACHE_HOME:-$HOME/.cache}/antidote/zsh_plugins.zsh"
-    if [[ ! $_dotfiles_plugins_bundle -nt $_dotfiles_plugins_txt ]]; then
+    if [[ $_dotfiles_plugins_bundle -nt $_dotfiles_plugins_txt ]] &&
+            _dotfiles_plugins_ready "$_dotfiles_plugins_bundle"; then
+        source "$_dotfiles_plugins_bundle"
+    else
         mkdir -p "${_dotfiles_plugins_bundle:h}"
         source "$_dotfiles_antidote"
         zstyle ':antidote:bundle:*' zcompile yes
@@ -181,15 +199,17 @@ if [[ -f $_dotfiles_antidote ]]; then
         zstyle ':antidote:bundle:*' defer-options '-a'
         _dotfiles_plugins_tmp="${_dotfiles_plugins_bundle}.tmp.$$"
         if antidote bundle < "$_dotfiles_plugins_txt" > "$_dotfiles_plugins_tmp" && \
-                [[ -s $_dotfiles_plugins_tmp ]]; then
-            mv -f "$_dotfiles_plugins_tmp" "$_dotfiles_plugins_bundle"
+                _dotfiles_plugins_ready "$_dotfiles_plugins_tmp" && \
+                mv -f "$_dotfiles_plugins_tmp" "$_dotfiles_plugins_bundle"; then
+            source "$_dotfiles_plugins_bundle"
         else
             rm -f "$_dotfiles_plugins_tmp"
-            print -u2 "Warning: Antidote could not refresh the plugin bundle; keeping the previous bundle."
+            print -u2 'Warning: Antidote could not refresh the plugin bundle.'
+            _dotfiles_plugins_ready "$_dotfiles_plugins_bundle" && source "$_dotfiles_plugins_bundle"
         fi
         unset _dotfiles_plugins_tmp
     fi
-    [[ -s $_dotfiles_plugins_bundle ]] && source "$_dotfiles_plugins_bundle"
+    unfunction _dotfiles_plugins_ready
     unset _dotfiles_plugins_txt _dotfiles_plugins_bundle
 fi
 unset _dotfiles_antidote
