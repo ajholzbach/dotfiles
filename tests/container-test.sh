@@ -330,6 +330,8 @@ else
     init_caches=("${init_tools[@]/#/$HOME/.cache/zsh/}")
     check "Zsh init caches record the tool binary" \
         eval '[ "$(head -qn 1 "${init_caches[@]/%/-init.zsh}" | grep -c "^# /")" -eq ${#init_tools[@]} ]'
+    check "Zsh runs the Starship PROMPT2 command only at the prompt" \
+        zsh -ic '[[ $PROMPT2 == *"starship prompt --continuation"* ]]'
     assert_absent "$HOME/.zsh_plugins.zsh" \
         "Generated Zsh plugin bundle stays in the cache" \
         "Generated Zsh plugin bundle leaked into the home directory"

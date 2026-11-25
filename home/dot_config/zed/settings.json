@@ -17,49 +17,54 @@
     "catppuccin-icons": true,
     "dockerfile": true,
     "git-firefly": true,
-    "html": true,
     "terraform": true,
     "toml": true,
   },
+  "auto_signature_help": true,
   "buffer_font_family": "MesloLGS Nerd Font",
   "buffer_font_size": 14,
+  "code_lens": "on",
+  "diagnostics": {
+    "inline": {
+      "enabled": true,
+    },
+  },
   "icon_theme": "Catppuccin Mocha",
+  "inlay_hints": {
+    "enabled": true,
+  },
   "languages": {
     "Python": {
-      "language_servers": [
-        "ty",
-        "ruff",
-        "!basedpyright",
-        "!pyrefly",
-        "!pyright",
-        "!pylsp",
-      ],
+      "language_servers": ["ty", "!basedpyright", "..."],
       "format_on_save": "on",
-      "formatter": "language_server",
       "code_actions_on_format": {
-        "source.organizeImports": true,
+        "source.organizeImports.ruff": true,
         "source.fixAll.ruff": true,
       },
     },
     "Go": {
-      "hard_tabs": true,
-      "tab_size": 4,
       "format_on_save": "on",
-      "formatter": "language_server",
-      "code_actions_on_format": {
-        "source.organizeImports": true,
-      },
     },
   },
   "lsp": {
-    "gopls": {
-      "binary": {
-        "path": "gopls",
+    "ty": {
+      "initialization_options": {
+        "experimental": {
+          "useUv": "scripts",
+        },
       },
     },
   },
   "project_panel": {
     "dock": "right",
+  },
+  "semantic_tokens": "combined",
+  "sticky_scroll": {
+    "enabled": true,
+  },
+  "tabs": {
+    "file_icons": true,
+    "git_status": true,
   },
   "telemetry": {
     "diagnostics": false,
@@ -68,9 +73,8 @@
   "theme": {
     "dark": "Catppuccin Mocha",
     "light": "Catppuccin Latte",
-    "mode": "dark",
+    "mode": "system",
   },
   "ui_font_family": "MesloLGS Nerd Font",
   "ui_font_size": 14,
-  "vim_mode": false,
 }
