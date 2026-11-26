@@ -13,7 +13,7 @@ export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
 
 source "$REPO/tests/lib/testlib.sh"
 
-run() {
+run_logged() {
     local log="$LOGS/$1"
     shift
     "$@" >"$log" 2>&1
@@ -29,12 +29,11 @@ printf '%s\n' '# >>> other tool >>>' 'export OTHER_TOOL=1' '# <<< other tool <<<
 cp -p "$HOME/.bashrc" "$HOME/.bash_profile" "$LOGS/original/"
 
 echo '== first apply'
-run apply1 chezmoi init --apply --promptBool tools=true
+run_logged apply1 chezmoi init --apply --promptBool tools=true
 check 'first apply succeeds' test "$?" -eq 0
 # The other checks mean nothing without a first apply
 [ "$TEST_FAIL" -eq 0 ] || exit 1
 # The first apply removes the ~/.local/bin/chezmoi that bash hashed
-# Find chezmoi again on PATH
 hash -r
 check 'restore point holds the original .bashrc' \
     grep -Fqx .bashrc "$STATE/backups/$(cat "$STATE/current-backup")/existing-files.txt"
@@ -63,7 +62,7 @@ check 'Fish stores no universal colors' \
     sh -c "! grep -q fish_color '$HOME/.config/fish/fish_variables' 2>/dev/null"
 
 echo '== second apply'
-run apply2 chezmoi apply
+run_logged apply2 chezmoi apply
 check 'second apply succeeds' test "$?" -eq 0
 check 'managed files match the source' test -z "$(chezmoi diff --exclude=scripts)"
 check 'second apply leaves no install script pending' \
@@ -71,7 +70,7 @@ check 'second apply leaves no install script pending' \
 
 echo '== uninstall'
 # Run the uninstall command from docs/uninstall.md
-run uninstall sh "$(chezmoi source-path)/../uninstall.sh" --yes
+run_logged uninstall sh "$(chezmoi source-path)/../uninstall.sh" --yes
 check 'uninstall succeeds' test "$?" -eq 0
 check '.bashrc restored' cmp "$LOGS/original/.bashrc" "$HOME/.bashrc"
 check '.bash_profile restored' cmp "$LOGS/original/.bash_profile" "$HOME/.bash_profile"

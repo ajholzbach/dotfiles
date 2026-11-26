@@ -1,8 +1,7 @@
 $stateBase = if ($env:XDG_STATE_HOME) { $env:XDG_STATE_HOME } else { Join-Path $HOME '.local\state' }
 $stateRoot = Join-Path $stateBase 'dotfiles'
 
-# Write-StateFile PATH LINES: replace PATH through a temporary file so an
-# interrupted write never leaves a truncated state file.
+# The temporary file keeps an interrupted write from truncating the state file
 function Write-StateFile {
     param([string]$Path, [string[]]$Lines)
 

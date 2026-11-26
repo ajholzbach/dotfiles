@@ -66,17 +66,13 @@ while IFS=$'\t' read -r script_path suites unexpected; do
         exit 1
     fi
 
-    old_ifs="$IFS"
-    IFS=','
-    # Intentional word splitting validates each comma-delimited suite
-    set -- $suites
-    IFS="$old_ifs"
-    if [ "$#" -eq 0 ]; then
+    IFS=',' read -r -a suite_list <<< "$suites"
+    if [ "${#suite_list[@]}" -eq 0 ]; then
         echo "Manifest entry has no Docker suites: $script_path" >&2
         exit 1
     fi
     seen_suites=','
-    for suite in "$@"; do
+    for suite in "${suite_list[@]}"; do
         case "$suite" in
             minimal|ubuntu|arch|powershell|tools-ubuntu|tools-arch)
                 ;;

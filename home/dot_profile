@@ -5,6 +5,7 @@ fi
 # The managed configs stay in ~/.config even when XDG_CONFIG_HOME is custom
 export STARSHIP_CONFIG="${STARSHIP_CONFIG:-$HOME/.config/starship.toml}"
 export BAT_CONFIG_PATH="${BAT_CONFIG_PATH:-$HOME/.config/bat/config}"
+# macOS tar adds ._ AppleDouble files to archives unless COPYFILE_DISABLE is set
 export COPYFILE_DISABLE="${COPYFILE_DISABLE:-1}"
 # fzf fails on every call when this file is missing
 if [ -z "${FZF_DEFAULT_OPTS_FILE:-}" ] && [ -r "$HOME/.config/fzf/fzfrc" ]; then
@@ -46,7 +47,6 @@ if [ -n "${EDITOR:-}" ]; then
 fi
 
 # local-env.sh is for Bash and zsh, and a display manager can run this file with sh
-# Load the untracked per-machine environment file only in Bash and zsh
 if [ -n "${BASH_VERSION:-}${ZSH_VERSION:-}" ] && [ -z "${DOTFILES_LOADING_LOCAL_ENV:-}" ] &&
         [ -f "$HOME/.config/local-env.sh" ]; then
     DOTFILES_LOADING_LOCAL_ENV=1

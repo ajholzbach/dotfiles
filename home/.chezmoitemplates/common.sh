@@ -10,8 +10,7 @@ die() {
     exit 1
 }
 
-# find_tool NAME: print NAME from PATH or from Homebrew. A Homebrew installed
-# during this apply is not on PATH yet.
+# A Homebrew that this apply installed is not on PATH yet
 find_tool() {
     command -v "$1" 2>/dev/null && return 0
     for candidate in "/opt/homebrew/bin/$1" "/usr/local/bin/$1"; do
@@ -20,7 +19,7 @@ find_tool() {
     return 1
 }
 
-# download_installer URL: download URL to a temporary file named by $installer
+# Callers read the path of the downloaded file from $installer
 download_installer() {
     [ -z "$installer" ] || rm -f "$installer"
     installer="$(mktemp)"

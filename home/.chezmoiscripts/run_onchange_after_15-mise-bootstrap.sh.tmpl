@@ -2,6 +2,8 @@
 {{ template "tools-script.sh" . }}
 # Run again when the tool config changes: {{ include "dot_config/mise/conf.d/10-dotfiles-tools.toml" | sha256sum }}
 MISE_PATH="$HOME/.local/bin/mise"
+# An older mise ignores [bootstrap.apt.sources], which came in mise 2026.10.9
+MISE_MIN_VERSION=2026010009
 {{- if eq .chezmoi.os "darwin" }}
 
 if ! find_tool brew >/dev/null; then
@@ -20,28 +22,26 @@ if [ ! -x "$mise_bin" ]; then
     mise_bin="$MISE_PATH"
 fi
 
-# An older mise ignores [bootstrap.apt.sources], which came in mise 2026.10.9
-# Update an older mise, or stop when it cannot update itself
-mise_version() {
+# Print the mise version as a number, for example 2026010009 for 2026.10.9
+mise_version_number() {
     "$mise_bin" --version 2>/dev/null | awk 'NR == 1 { split($1, v, "."); printf "%d%03d%03d\n", v[1], v[2], v[3] } END { if (NR == 0) print 0 }'
 }
-if [ "$(mise_version)" -lt 2026010009 ]; then
+if [ "$(mise_version_number)" -lt "$MISE_MIN_VERSION" ]; then
     printf 'Updating mise %s...\n' "$("$mise_bin" --version 2>/dev/null)"
     "$mise_bin" self-update --yes || true
-    [ "$(mise_version)" -ge 2026010009 ] ||
+    [ "$(mise_version_number)" -ge "$MISE_MIN_VERSION" ] ||
         die "mise $("$mise_bin" --version 2>/dev/null) is older than 2026.10.9. Update mise, then apply again."
 fi
 {{- if eq .chezmoi.os "linux" }}
 
 # apt fails when another source for the fish 4 PPA has a different Signed-By
-# Delete the fish 4 PPA sources from add-apt-repository or older dotfiles
 for fish_source in /etc/apt/sources.list.d/*; do
     case "$fish_source" in */mise-fish-shell-release-4.sources) continue ;; esac
     grep -Fqs ppa.launchpadcontent.net/fish-shell/release-4 "$fish_source" || continue
     sudo rm -f "$fish_source"
     printf 'Removed %s, because mise adds the fish 4 PPA.\n' "$fish_source"
 done
-# Delete the key that older dotfiles wrote for their fish 4 PPA source
+# Older dotfiles wrote this key for their fish 4 PPA source
 if [ -e /etc/apt/keyrings/fish-shell-release-4.asc ]; then
     sudo rm -f /etc/apt/keyrings/fish-shell-release-4.asc
 fi
@@ -52,7 +52,6 @@ XDG_CONFIG_HOME="$HOME/.config" "$mise_bin" bootstrap --only packages,tools --ye
 {{- if eq .chezmoi.os "darwin" }}
 
 # The one-line install puts chezmoi in ~/.local/bin, which would shadow updates from Homebrew
-# Remove that copy when Homebrew provides chezmoi
 local_chezmoi="$HOME/.local/bin/chezmoi"
 if [ -x "$local_chezmoi" ] && brew_bin="$(find_tool brew)" &&
         [ -x "$("$brew_bin" --prefix)/bin/chezmoi" ]; then

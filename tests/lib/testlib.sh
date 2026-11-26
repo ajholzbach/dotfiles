@@ -19,18 +19,18 @@ fail() {
     TEST_FAIL=$((TEST_FAIL + 1))
 }
 
-# check MESSAGE COMMAND...: pass when COMMAND succeeds, with its output hidden
 check() {
     local message="$1"
     shift
     if "$@" >/dev/null 2>&1; then ok "$message"; else fail "$message"; fi
 }
 
-# stub DIR NAME LINE...: write the executable shell script DIR/NAME
 stub() {
-    mkdir -p "$1"
-    printf '%s\n' '#!/bin/sh' "${@:3}" > "$1/$2"
-    chmod +x "$1/$2"
+    local dir="$1" name="$2"
+    shift 2
+    mkdir -p "$dir"
+    printf '%s\n' '#!/bin/sh' "$@" > "$dir/$name"
+    chmod +x "$dir/$name"
 }
 
 assert_nonempty_file() {

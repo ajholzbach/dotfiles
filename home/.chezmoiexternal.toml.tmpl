@@ -3,14 +3,12 @@
 {{-   $fontDir := ".local/share/fonts" -}}
 {{-   if eq .chezmoi.os "darwin" }}{{ $fontDir = "Library/Fonts" }}{{ end -}}
 # A directory entry would make chezmoi own the whole font directory
-# List each font file as its own entry
 {{-   range list "Regular" "Bold" "Italic" "BoldItalic" }}
 {{-     $font := printf "MesloLGSNerdFont-%s.ttf" . }}
 
 [{{ printf "%s/%s" $fontDir $font | quote }}]
     type = "archive-file"
     # A refresh of a latest URL fails every chezmoi command when offline
-    # Pin the release version
     url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/Meslo.tar.xz"
     path = {{ $font | quote }}
 {{-   end }}

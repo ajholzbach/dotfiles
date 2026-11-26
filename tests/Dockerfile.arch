@@ -1,7 +1,6 @@
 FROM archlinux:base
 
-# The sandbox fails under amd64 emulation in some Docker runtimes
-# Run pacman without its sandbox
+# The pacman sandbox fails under amd64 emulation in some Docker runtimes
 RUN pacman --disable-sandbox -Syu --noconfirm --needed \
     bat \
     ca-certificates \

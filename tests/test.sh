@@ -50,7 +50,7 @@ trap 'exit 143' TERM
 
 mkdir -p "$STAGED_REPO"
 
-# Stage tracked and untracked files that Git does not ignore, without .git
+# The snapshot holds the files that Git tracks or would track, and never .git
 while IFS= read -r -d '' relative_path; do
     source_path="$REPO_ROOT/$relative_path"
     destination_path="$STAGED_REPO/$relative_path"
@@ -164,8 +164,6 @@ run_suite() {
     local suite="$1"
     local dockerfile
     local image="dotfiles-test-$suite"
-    local distro
-    local mode
     local -a platform_args=()
     local -a run_environment=()
     local -a test_command=()
@@ -175,33 +173,18 @@ run_suite() {
     case "$suite" in
         minimal)
             dockerfile="$STAGED_REPO/tests/Dockerfile.minimal"
-            distro='ubuntu'
-            mode='minimal'
-            run_environment=(
-                -e "TEST_DISTRO=$distro"
-                -e "TEST_MODE=$mode"
-            )
+            run_environment=(-e TEST_DISTRO=ubuntu -e TEST_MODE=minimal)
             test_command=(bash /dotfiles/tests/container-test.sh)
             ;;
         ubuntu)
             dockerfile="$STAGED_REPO/tests/Dockerfile"
-            distro='ubuntu'
-            mode='optional'
-            run_environment=(
-                -e "TEST_DISTRO=$distro"
-                -e "TEST_MODE=$mode"
-            )
+            run_environment=(-e TEST_DISTRO=ubuntu -e TEST_MODE=optional)
             test_command=(bash /dotfiles/tests/container-test.sh)
             ;;
         arch)
             dockerfile="$STAGED_REPO/tests/Dockerfile.arch"
-            distro='arch'
-            mode='optional'
             platform_args=(--platform linux/amd64)
-            run_environment=(
-                -e "TEST_DISTRO=$distro"
-                -e "TEST_MODE=$mode"
-            )
+            run_environment=(-e TEST_DISTRO=arch -e TEST_MODE=optional)
             test_command=(bash /dotfiles/tests/container-test.sh)
             ;;
         tools-ubuntu)
@@ -230,6 +213,7 @@ run_suite() {
     esac
 
     echo "Building $suite Docker image..."
+    # Bash before 4.4, as on macOS, treats an empty array as unset under set -u
     if [ "${#platform_args[@]}" -gt 0 ]; then
         build_args+=("${platform_args[@]}")
     fi

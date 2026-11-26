@@ -15,39 +15,33 @@ TOOL_TARGETS=(
 )
 MISE_CONFIG=.config/mise/conf.d/10-dotfiles-tools.toml
 
-# source_template DATA TEMPLATE: render TEMPLATE from the source with DATA
-source_template() {
-    chezmoi execute-template --source "$SOURCE" --override-data "$1" "$2"
+render_string() {
+    local data="$1" template="$2"
+    chezmoi execute-template --source "$SOURCE" --override-data "$data" "$template"
 }
 
-# render DATA FILE: render a source file with DATA
-render() {
-    chezmoi execute-template --source "$SOURCE" --override-data "$1" \
-        --file "$SOURCE/$2"
-}
-
-# query TEMPLATE: evaluate TEMPLATE against the applied source and config
-query() {
-    chezmoi execute-template "$1"
+render_file() {
+    local data="$1" file="$2"
+    chezmoi execute-template --source "$SOURCE" --override-data "$data" \
+        --file "$SOURCE/$file"
 }
 
 fixture="$(mktemp -d)"
 trap 'rm -rf "$fixture"' EXIT
 
-# mock_dir: print a new directory for mock commands
-mock_dir() {
+new_mock_dir() {
     mktemp -d -p "$fixture"
 }
 
-# renders DATA TARGET: succeed when TARGET produces a file for DATA.
-# Return 2 when the template fails to render.
+# Status 2 means the template failed to render
 renders() {
-    local output
-    if [ "${2##*/}" = "${MISE_CONFIG##*/}" ]; then
-        output="$(render "$1" .chezmoiignore)" || return 2
+    local data="$1" target="$2" output
+    # The mise config always renders, and .chezmoiignore decides whether chezmoi applies it
+    if [ "${target##*/}" = "${MISE_CONFIG##*/}" ]; then
+        output="$(render_file "$data" .chezmoiignore)" || return 2
         ! grep -Fqx "$MISE_CONFIG" <<< "$output"
     else
-        output="$(render "$1" "$2")" || return 2
+        output="$(render_file "$data" "$target")" || return 2
         [ -n "$output" ]
     fi
 }
@@ -76,7 +70,7 @@ done
 log "Checking the chezmoi config template..."
 config_template="$SOURCE/.chezmoi.toml.tmpl"
 
-# init_config FILE ARG...: render the config template to FILE with no TTY
+# chezmoi must not prompt
 init_config() {
     local file="$1"
     shift
@@ -84,9 +78,9 @@ init_config() {
         < /dev/null > "$file"
 }
 
-# config_value FILE TEMPLATE: evaluate TEMPLATE with the config in FILE
 config_value() {
-    chezmoi --config "$1" execute-template "$2"
+    local config_file="$1" template="$2"
+    chezmoi --config "$config_file" execute-template "$template"
 }
 
 if init_config "$fixture/windows.toml" --override-data '{"chezmoi":{"os":"windows"}}' &&
@@ -113,21 +107,19 @@ fi
 kube_data='{"tools":false,"kube":{"starshipContexts":"context_alias = \"$rest\"","nested":{"key":"value"}}}'
 if init_config "$fixture/kube.toml" --override-data "$kube_data" &&
         [ "$(config_value "$fixture/kube.toml" '{{ .kube | toJson }}')" = \
-            "$(source_template "$kube_data" '{{ .kube | toJson }}')" ]; then
+            "$(render_string "$kube_data" '{{ .kube | toJson }}')" ]; then
     ok "chezmoi init keeps machine-local kube data"
 else
     fail "chezmoi init lost machine-local kube data"
 fi
 
 log "Checking the bootstrap script against a mock mise..."
-# An installed mise runs bootstrap with the managed config. On macOS, an
-# installed Homebrew is reused.
 for os in linux darwin; do
-    mocks="$(mock_dir)"
+    mocks="$(new_mock_dir)"
     stub "$mocks" brew 'exit 0'
     stub "$mocks" mise '[ "$1" != --version ] || { echo 2026.11.6; exit; }' \
         'printf "%s %s\n" "$XDG_CONFIG_HOME" "$*" >> "$MOCK_LOG"'
-    render "{\"tools\":true,\"chezmoi\":{\"os\":\"$os\"}}" "${TOOL_TARGETS[0]}" > "$mocks/install.sh"
+    render_file "{\"tools\":true,\"chezmoi\":{\"os\":\"$os\"}}" "${TOOL_TARGETS[0]}" > "$mocks/install.sh"
     if HOME="$mocks" MOCK_LOG="$mocks/log" PATH="$mocks:$PATH" sh "$mocks/install.sh" >/dev/null &&
             [ "$(tail -n 1 "$mocks/log")" = "$mocks/.config bootstrap --only packages,tools --yes" ]; then
         ok "bootstrap script on $os runs mise bootstrap for packages and tools"
@@ -136,14 +128,12 @@ for os in linux darwin; do
     fi
 done
 
-# On macOS, Homebrew provides chezmoi after the one-line install
-# The bootstrap script removes the ~/.local/bin copy
-mocks="$(mock_dir)"
+mocks="$(new_mock_dir)"
 stub "$mocks/brew-prefix/bin" chezmoi 'exit 0'
 stub "$mocks/.local/bin" chezmoi 'exit 0'
 stub "$mocks" brew "echo '$mocks/brew-prefix'"
 stub "$mocks" mise '[ "$1" != --version ] || echo 2026.11.6'
-render '{"tools":true,"chezmoi":{"os":"darwin"}}' "${TOOL_TARGETS[0]}" > "$mocks/install.sh"
+render_file '{"tools":true,"chezmoi":{"os":"darwin"}}' "${TOOL_TARGETS[0]}" > "$mocks/install.sh"
 if HOME="$mocks" PATH="$mocks:$PATH" sh "$mocks/install.sh" >/dev/null &&
         [ ! -e "$mocks/.local/bin/chezmoi" ]; then
     ok "bootstrap script on macOS removes ~/.local/bin/chezmoi when Homebrew provides chezmoi"
@@ -151,15 +141,14 @@ else
     fail "bootstrap script on macOS kept ~/.local/bin/chezmoi next to the Homebrew copy"
 fi
 
-# On Apple silicon with tools, Homebrew installs Starship, Antidote, and the font
-# The dotfiles installers and the font externals render nothing there
 homebrew_owned() {
-    local data="{\"tools\":true,\"chezmoi\":{\"os\":\"darwin\",\"arch\":\"$1\"}}"
-    [ -z "$(render "$data" .chezmoiscripts/run_after_12-install-starship.sh.tmpl | tr -d '[:space:]')" ] &&
-        [ -z "$(render "$data" .chezmoiscripts/run_after_16-install-antidote.sh.tmpl | tr -d '[:space:]')" ]
+    local arch="$1"
+    local data="{\"tools\":true,\"chezmoi\":{\"os\":\"darwin\",\"arch\":\"$arch\"}}"
+    [ -z "$(render_file "$data" .chezmoiscripts/run_after_12-install-starship.sh.tmpl | tr -d '[:space:]')" ] &&
+        [ -z "$(render_file "$data" .chezmoiscripts/run_after_16-install-antidote.sh.tmpl | tr -d '[:space:]')" ]
 }
 no_font_externals() {
-    ! render '{"tools":true,"chezmoi":{"os":"darwin"}}' .chezmoiexternal.toml.tmpl | grep -q '^\['
+    ! render_file '{"tools":true,"chezmoi":{"os":"darwin"}}' .chezmoiexternal.toml.tmpl | grep -q '^\['
 }
 if homebrew_owned arm64 && ! homebrew_owned amd64 && no_font_externals; then
     ok "macOS with tools leaves Starship, Antidote, and the font to Homebrew"
@@ -168,7 +157,6 @@ else
 fi
 
 # A mise older than 2026.10.9 ignores [bootstrap.apt.sources]
-# The bootstrap script updates it first
 stub "$mocks" mise \
     '[ "$1" != --version ] || { [ -e "$HOME/updated" ] && echo 2026.11.6 || echo 2026.10.8; exit; }' \
     '[ "$1" != self-update ] || { touch "$HOME/updated"; exit; }' \
@@ -180,7 +168,6 @@ else
     fail "bootstrap script did not update an old mise before bootstrap"
 fi
 
-# A mise that cannot update itself stops the apply with a recovery hint
 stub "$mocks" mise '[ "$1" = --version ] && echo 2024.1.0' 'exit 2'
 if ! mock_output="$(HOME="$mocks" PATH="$mocks:$PATH" sh "$mocks/install.sh" 2>&1)" &&
         grep -Fq 'is older than 2026.10.9' <<< "$mock_output" &&
@@ -190,8 +177,7 @@ else
     fail "bootstrap script ignored a mise that is too old"
 fi
 
-# add-apt-repository writes its own source for the fish 4 PPA
-# Add one, so the install must replace it with the mise source
+# add-apt-repository writes its own source for the fish 4 PPA, and the install must replace that source
 ppa_source=''
 codename="$(. /etc/os-release && printf '%s' "${UBUNTU_CODENAME:-}")"
 if [ -n "$codename" ]; then
@@ -215,8 +201,7 @@ if [ -n "$ppa_source" ]; then
         "The add-apt-repository source for the fish 4 PPA is still present"
 fi
 
-# uninstall removes the mise config
-# Read the expected packages from the mise config now
+# Uninstall removes the mise config that lists the packages
 mise_config="$HOME/$MISE_CONFIG"
 manager="$(command -v apt-get >/dev/null && echo apt || echo pacman)"
 mapfile -t expected_packages < <(
@@ -225,25 +210,24 @@ mapfile -t expected_packages < <(
 )
 [ "${#expected_packages[@]}" -gt 0 ] || fail "No packages to check in $mise_config"
 
-# installed MANAGER PACKAGE: succeed when MANAGER reports PACKAGE as installed
-installed() {
-    case "$1" in
-        apt) dpkg-query -W -f='${Status}\n' "$2" 2>/dev/null | grep -q ' installed$' ;;
-        pacman) pacman -Q "$2" >/dev/null 2>&1 ;;
-        mise) "$HOME/.local/bin/mise" ls --installed "$2" 2>/dev/null | grep -q . ;;
+package_installed() {
+    local manager="$1" package="$2"
+    case "$manager" in
+        apt) dpkg-query -W -f='${Status}\n' "$package" 2>/dev/null | grep -q ' installed$' ;;
+        pacman) pacman -Q "$package" >/dev/null 2>&1 ;;
+        mise) "$HOME/.local/bin/mise" ls --installed "$package" 2>/dev/null | grep -q . ;;
         *) return 1 ;;
     esac
 }
 
-# check_packages SUFFIX: check every package from the mise config
 check_packages() {
-    local entry manager package
+    local message_suffix="$1" entry manager package
     for entry in "${expected_packages[@]}"; do
         read -r manager package <<< "$entry"
-        if installed "$manager" "$package"; then
-            ok "$entry is installed$1"
+        if package_installed "$manager" "$package"; then
+            ok "$entry is installed$message_suffix"
         else
-            fail "$entry is not installed$1"
+            fail "$entry is not installed$message_suffix"
         fi
     done
 }
@@ -277,15 +261,14 @@ else
 fi
 
 log "Running every tools script again without root..."
-# tool_scripts: print the run_onchange_ tool scripts that chezmoi would run
-tool_scripts() {
+pending_tool_scripts() {
     chezmoi status --include=scripts 2>/dev/null |
         grep -E '(15-mise-bootstrap|36-install-fisher)' || true
 }
 
 # chezmoi records run_onchange_ scripts in entryState
 chezmoi state delete-bucket --bucket=entryState
-pending="$(tool_scripts)"
+pending="$(pending_tool_scripts)"
 if grep -Fq 15-mise-bootstrap.sh <<< "$pending" &&
         grep -Fq 36-install-fisher.sh <<< "$pending"; then
     ok "Clearing the script state queues the tools scripts again"
@@ -295,9 +278,9 @@ else
 fi
 
 # A sudo that always fails proves each script finds its work already done
-mocks="$(mock_dir)"
+mocks="$(new_mock_dir)"
 stub "$mocks" sudo 'echo "unexpected sudo $*" >&2' 'exit 1'
-if rerun_output="$(PATH="$mocks:$PATH" chezmoi apply 2>&1)" && [ -z "$(tool_scripts)" ]; then
+if rerun_output="$(PATH="$mocks:$PATH" chezmoi apply 2>&1)" && [ -z "$(pending_tool_scripts)" ]; then
     ok "Every tools script runs again without needing root"
 else
     echo "$rerun_output"

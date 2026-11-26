@@ -12,16 +12,14 @@ $markerPattern = $escapedBeginMarker + '|' + $escapedEndMarker
 $blockPattern = '(?ms)^' + $escapedBeginMarker + '\r?\n.*?^' +
     $escapedEndMarker + '\r?(?:\n|$)'
 
-# Read-ProfileText PATH: return the profile text and the encoding to write it
-# back with. Text without a BOM that is not valid UTF-8 uses the ANSI code page.
+# Text without a BOM that is not valid UTF-8 is in the ANSI code page
 function Read-ProfileText {
     param([string]$Path)
 
     $reader = [IO.StreamReader]::new($Path, [Text.UTF8Encoding]::new($false, $true), $true)
     try {
         $content = $reader.ReadToEnd()
-        # A UTF-16 or UTF-32 BOM selects a decoder that replaces bad bytes
-        # Stop when the text has U+FFFD
+        # A UTF-16 or UTF-32 BOM selects a decoder that replaces bad bytes with U+FFFD and does not throw
         if ($content.Contains([char]0xFFFD)) {
             throw "Refusing to rewrite $Path because it is not valid $($reader.CurrentEncoding.WebName)."
         }
@@ -34,6 +32,7 @@ function Read-ProfileText {
     }
 }
 
+# A malformed profile must stop the run before any profile changes
 $updates = foreach ($profilePath in $profilePaths) {
     $content = ''
     $encoding = [Text.UTF8Encoding]::new($true)
@@ -75,7 +74,6 @@ $updates = foreach ($profilePath in $profilePaths) {
     }
 }
 
-# Validate both profiles before changing either one
 foreach ($update in $updates) {
     if ($update.Updated -ceq $update.Content) {
         continue

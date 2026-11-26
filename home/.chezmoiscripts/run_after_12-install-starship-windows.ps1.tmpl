@@ -3,9 +3,7 @@ $ErrorActionPreference = 'Stop'
 {{ template "powershell-state.ps1" . }}
 $starshipVersionPattern = '(?m)^starship (?<Version>(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)(?:\s|$)'
 
-# Invoke-Native NAME ARGUMENTS: run a command and throw when it fails
-# Shims such as scoop may not set $LASTEXITCODE
-# Check $? as well as $LASTEXITCODE
+# Shims such as Scoop may not set $LASTEXITCODE
 function Invoke-Native {
     param([string]$Name, [string[]]$Arguments)
 
@@ -18,8 +16,6 @@ function Invoke-Native {
     }
 }
 
-# Get-StarshipVersion: print the semantic version that starship reports, or
-# nothing when it fails or reports something else.
 function Get-StarshipVersion {
     try {
         $output = @(Invoke-Native starship @('--version')) -join "`n"
@@ -54,11 +50,11 @@ if (Get-Command winget -ErrorAction SilentlyContinue) {
 Write-Host "Installing Starship with $manager..."
 Invoke-Native $manager $installArguments
 
-# uninstall must remove the package even when a check fails
-# Write the ownership marker before the checks below
+# Uninstall must remove the package even when a later check fails
 $marker = Join-Path $stateRoot 'starship-installed-by-dotfiles'
 Write-StateFile $marker (@{ Manager = $manager } | ConvertTo-Json -Compress)
 
+# winget and Scoop change the stored PATH, not the PATH of this process
 $env:PATH = @($env:PATH,
     [Environment]::GetEnvironmentVariable('Path', 'Machine'),
     [Environment]::GetEnvironmentVariable('Path', 'User')) -match '\S' -join [IO.Path]::PathSeparator

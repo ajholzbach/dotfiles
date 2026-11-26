@@ -17,9 +17,9 @@ function conda --wraps conda
             set -a prefixes $HOMEBREW_PREFIX/Caskroom/{miniforge,miniconda,mambaforge,anaconda}/base
         end
 
-        for p in $prefixes
-            if test -x "$p/bin/conda"
-                set conda_exe "$p/bin/conda"
+        for prefix in $prefixes
+            if test -x "$prefix/bin/conda"
+                set conda_exe "$prefix/bin/conda"
                 break
             end
         end

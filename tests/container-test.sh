@@ -11,28 +11,27 @@ scripts=/dotfiles/home/.chezmoiscripts
 
 sha() { sha256sum "$1" | cut -d ' ' -f 1; }
 
-# full_mode: succeed in the suites that install the optional shells and tools
-full_mode() { [ "$TEST_MODE" != minimal ]; }
+optional_tools_installed() { [ "$TEST_MODE" != minimal ]; }
 
-# render SCRIPT OS: print a chezmoi script template rendered for OS
-render() {
+render_script() {
+    local script="$1" os="$2"
     chezmoi execute-template --source /dotfiles/home \
-        --override-data "{\"chezmoi\":{\"os\":\"$2\"},\"tools\":true}" \
-        --file "$scripts/$1"
+        --override-data "{\"chezmoi\":{\"os\":\"$os\"},\"tools\":true}" \
+        --file "$scripts/$script"
 }
 
-# restore_point_fixture DIR: create DIR/home with a one-file restore point
 restore_point_fixture() {
-    local state="$1/home/.local/state/dotfiles"
+    local fixture_dir="$1"
+    local state="$fixture_dir/home/.local/state/dotfiles"
     mkdir -p "$state/backups/fixture/files"
     printf '%s\n' .fixture > "$state/backups/fixture/managed-files.txt"
     : > "$state/backups/fixture/existing-files.txt"
     printf '%s\n' fixture > "$state/current-backup"
 }
 
-# fixture_uninstall DIR [VAR=VALUE...]: run uninstall.sh in the DIR fixture
 fixture_uninstall() {
-    env HOME="$1/home" XDG_STATE_HOME="$1/home/.local/state" "${@:2}" \
+    local fixture_dir="$1"
+    env HOME="$fixture_dir/home" XDG_STATE_HOME="$fixture_dir/home/.local/state" \
         sh /dotfiles/uninstall.sh --yes --keep-chezmoi
 }
 
@@ -45,7 +44,7 @@ ok "Running $TEST_MODE test on expected distro ($distro_id)"
 log "Checking script templates..."
 valid_shell() {
     local script
-    script="$(render "$1" "$2")" && printf '%s\n' "$script" | sh -n
+    script="$(render_script "$1" "$2")" && printf '%s\n' "$script" | sh -n
 }
 for template in "$scripts"/*.sh.tmpl; do
     for os in linux darwin; do
@@ -67,33 +66,30 @@ else
 fi
 
 log "Checking the macOS font externals..."
-# darwin_fonts: print the font targets that chezmoi installs on macOS
-darwin_fonts() {
+darwin_font_targets() {
     chezmoi execute-template --source /dotfiles/home --override-data '{"chezmoi":{"os":"darwin"}}' \
         --file /dotfiles/home/.chezmoiexternal.toml.tmpl | sed -n 's/^\["\(.*\)"\]$/\1/p'
 }
 assert_equal "$(printf 'Library/Fonts/MesloLGSNerdFont-%s.ttf\n' Regular Bold Italic BoldItalic)" \
-    "$(darwin_fonts)" \
+    "$(darwin_font_targets)" \
     "macOS installs the four font files into ~/Library/Fonts" \
     "macOS font targets are wrong"
 
 log "Checking that installers leave existing installations alone..."
 fixture="$(mktemp -d)"
-render run_after_12-install-starship.sh.tmpl linux > "$fixture/starship.sh"
-render run_after_16-install-antidote.sh.tmpl linux > "$fixture/antidote.sh"
-# The Antidote script needs only zsh
-# Put only a zsh stub on PATH
+render_script run_after_12-install-starship.sh.tmpl linux > "$fixture/starship.sh"
+render_script run_after_16-install-antidote.sh.tmpl linux > "$fixture/antidote.sh"
+# The installers see a zsh stub and no Git on PATH
 stub "$fixture/bin" zsh 'exit 0'
 run_installer() {
-    env HOME="$2" XDG_STATE_HOME="$2/state" PATH="$fixture/bin" /bin/sh "$fixture/$1"
+    local script="$1" home="$2"
+    env HOME="$home" XDG_STATE_HOME="$home/state" PATH="$fixture/bin" /bin/sh "$fixture/$script"
 }
-# keeps_existing SCRIPT HOME FILE MARKER: SCRIPT succeeds, FILE is unchanged,
-# and no ownership MARKER is written.
 keeps_existing() {
-    local before
-    before="$(sha "$2/$3")"
-    run_installer "$1" "$2" && [ "$(sha "$2/$3")" = "$before" ] &&
-        [ ! -e "$2/state/dotfiles/$4" ]
+    local script="$1" home="$2" file="$3" ownership_marker="$4" before
+    before="$(sha "$home/$file")"
+    run_installer "$script" "$home" && [ "$(sha "$home/$file")" = "$before" ] &&
+        [ ! -e "$home/state/dotfiles/$ownership_marker" ]
 }
 stub "$fixture/starship-home/.local/bin" starship 'echo starship 9.9.9'
 check "Starship installer keeps an existing ~/.local/bin/starship" \
@@ -137,7 +133,7 @@ stub "$rtk_dir/bin" rtk \
     'printf "%s\n" "$*" >> "$HOME/rtk.log"' \
     'case "$*" in *--codex*) printf "\n@RTK.md\n" >> "$HOME/.codex/AGENTS.md" ;; esac' \
     'exit "${FAKE_RTK_STATUS:-0}"'
-PATH="$rtk_dir/bin:$PATH" render run_onchange_after_30-init-rtk.sh.tmpl linux > "$rtk_dir/init-rtk.sh"
+PATH="$rtk_dir/bin:$PATH" render_script run_onchange_after_30-init-rtk.sh.tmpl linux > "$rtk_dir/init-rtk.sh"
 rtk_setup_ok() {
     printf '%s\n' '# managed rules' > "$rtk_dir/.codex/AGENTS.md"
     rm -f "$rtk_dir/rtk.log"
@@ -162,16 +158,15 @@ printf '%s\n' '# original Codex rules' > "$HOME/.codex/AGENTS.md"
 chmod 0640 "$HOME/.bashrc"
 chmod 0600 "$HOME/.profile"
 ln -snf .bashrc "$HOME/.zprofile"
-# apply keeps the marked block and drops the unmarked line
-# Write another tool's marked block and an unmarked line
+# Apply must keep another tool's marked block and drop the unmarked line
 bash_profile_block="$(printf '%s\n' '# >>> other tool >>>' 'export OTHER_TOOL=1' '# <<< other tool <<<')"
 printf '%s\n' "$bash_profile_block" '# original bash_profile' > "$HOME/.bash_profile"
 
 declare -A original_sha original_mode
-# remember_original PATH: record the content and mode of ~/PATH
 remember_original() {
-    original_sha[$1]="$(sha "$HOME/$1")"
-    original_mode[$1]="$(stat -c '%a' "$HOME/$1")"
+    local path="$1"
+    original_sha[$path]="$(sha "$HOME/$path")"
+    original_mode[$path]="$(stat -c '%a' "$HOME/$path")"
 }
 for path in .bashrc .bash_profile .profile .config/git/ignore .claude/CLAUDE.md .codex/AGENTS.md; do
     remember_original "$path"
@@ -192,14 +187,12 @@ if ! apply_output="$(env PATH="$system_path" "$chezmoi_executable" \
 fi
 ok "chezmoi init --apply succeeded with its install directory absent from PATH"
 
-# bash_profile_keeps_block: succeed when ~/.bash_profile is the kept block,
-# a blank line, and then the managed file.
 bash_profile_keeps_block() {
-    [ "$(cat "$HOME/.bash_profile")" = "$bash_profile_block
-
-$(chezmoi execute-template --source /dotfiles/home \
-    --override-data '{"chezmoi":{"stdin":""}}' \
-    --file /dotfiles/home/modify_dot_bash_profile)" ]
+    local managed_content
+    managed_content="$(chezmoi execute-template --source /dotfiles/home \
+        --override-data '{"chezmoi":{"stdin":""}}' \
+        --file /dotfiles/home/modify_dot_bash_profile)"
+    [ "$(cat "$HOME/.bash_profile")" = "$bash_profile_block"$'\n\n'"$managed_content" ]
 }
 check "Apply keeps another tool's marked block in .bash_profile" bash_profile_keeps_block
 
@@ -224,12 +217,11 @@ assert_equal false "$(chezmoi execute-template '{{ .tools }}')" \
     "Default init enabled the tools install"
 
 font_files="$(chezmoi managed --include=files --path-style=relative | grep '^\.local/share/fonts/' || true)"
-# every_font CHECK: succeed when CHECK passes for every managed font path
 every_font() {
-    local font
+    local font_check="$1" font
     [ -n "$font_files" ] || return 1
     while IFS= read -r font; do
-        "$1" "$font" || return 1
+        "$font_check" "$font" || return 1
     done <<< "$font_files"
 }
 font_installed() { [ -s "$HOME/$1" ] && grep -Fqx -e "$1" "$backup_dir/managed-files.txt"; }
@@ -270,7 +262,7 @@ check "Bash login startup finds Starship and the managed config paths" \
     "${login_env[@]}" bash -lc "$login_check"
 check "Bash interactive startup succeeds" bash -ic exit
 
-if ! full_mode; then
+if ! optional_tools_installed; then
     for optional_command in fish zsh xonsh mise bat zoxide fzf tmux vim; do
         check "Minimal install does not require or install $optional_command" \
             eval "! command -v $optional_command"
@@ -296,8 +288,7 @@ else
         "Antidote ownership marker is missing or stale"
 
     theme_file="/dotfiles/home/dot_config/fish/themes/Catppuccin Mocha.theme"
-    # Fish 4 adds a --theme= item to each color
-    # Compare only the first item of the color
+    # Fish 4 adds a --theme= item after each color value
     # shellcheck disable=SC2016 # Expanded by Fish.
     assert_equal "$(awk '$1 == "fish_color_command" { print $2 }' "$theme_file")" \
         "$(fish -ic 'echo $fish_color_command[1]' 2>/dev/null)" \
@@ -315,7 +306,6 @@ else
     check "Zsh syntax highlighting and autosuggestions load at startup" \
         zsh -ic 'typeset -f _zsh_highlight && typeset -f _zsh_autosuggest_start'
     # fzf before 0.48, as in Ubuntu 24.04, has no --zsh and --fish options
-    # Test the fzf init scripts only when fzf has these options
     init_tools=(zoxide starship)
     zsh_tool_init='whence -w __zoxide_z prompt_starship_precmd'
     fish_tool_init='functions -q __zoxide_z enable_transience'
@@ -324,7 +314,7 @@ else
         zsh_tool_init+=' fzf-history-widget'
         fish_tool_init+=' fzf_key_bindings; and bind \cr | string match -q "*fzf*"'
     fi
-    # Start each shell twice to test the init script caches
+    # The second start sources the init caches
     check "Zsh loads ${init_tools[*]}, also from the init caches" \
         eval 'zsh -ic "$zsh_tool_init" >/dev/null && zsh -ic "$zsh_tool_init" >/dev/null'
     init_caches=("${init_tools[@]/#/$HOME/.cache/zsh/}")
@@ -341,11 +331,11 @@ else
     check "Fish configuration parses and starts without Fisher" \
         eval 'fish -n "$HOME/.config/fish/config.fish" && fish -ic exit'
     # TERM stops fish 3 terminal warnings
-    # Start fish twice to test the Starship cache
+    # The second start sources the Starship cache
     fish_starship_quiet() {
-        local check='functions -q enable_transience; or echo missing'
-        [ -z "$(TERM=xterm-256color fish -ic "$check" 2>&1)" ] &&
-            [ -z "$(TERM=xterm-256color fish -ic "$check" 2>&1)" ]
+        local probe='functions -q enable_transience; or echo missing'
+        [ -z "$(TERM=xterm-256color fish -ic "$probe" 2>&1)" ] &&
+            [ -z "$(TERM=xterm-256color fish -ic "$probe" 2>&1)" ]
     }
     check "Fish loads the Starship prompt with no errors, also from its cache" \
         fish_starship_quiet
@@ -363,15 +353,16 @@ else
         env XDG_CONFIG_HOME="$custom_xdg" fish -c 'source "$HOME/.config/fish/config.fish"
             test "$STARSHIP_CONFIG" = "$HOME/.config/starship.toml"'
 
-    # copyfile_disable VALUE: Zsh and Fish end up with COPYFILE_DISABLE=VALUE
-    copyfile_disable() {
+    # The default value 1 is tested with COPYFILE_DISABLE unset, and other values as overrides
+    shells_get_copyfile_disable() {
+        local expected="$1"
         local start=(env -u COPYFILE_DISABLE PATH="$system_path")
-        [ "$1" = 1 ] || start=(env COPYFILE_DISABLE="$1" PATH="$system_path")
-        "${start[@]}" zsh -fc 'source "$HOME/.profile"; [[ "$COPYFILE_DISABLE" == "$1" ]]' zsh "$1" &&
-            "${start[@]}" fish -c 'test "$COPYFILE_DISABLE" = $argv[1]' "$1"
+        [ "$expected" = 1 ] || start=(env COPYFILE_DISABLE="$expected" PATH="$system_path")
+        "${start[@]}" zsh -fc 'source "$HOME/.profile"; [[ "$COPYFILE_DISABLE" == "$1" ]]' zsh "$expected" &&
+            "${start[@]}" fish -c 'test "$COPYFILE_DISABLE" = $argv[1]' "$expected"
     }
-    check "Zsh and Fish default COPYFILE_DISABLE to 1" copyfile_disable 1
-    check "Zsh and Fish preserve a COPYFILE_DISABLE override" copyfile_disable keep
+    check "Zsh and Fish default COPYFILE_DISABLE to 1" shells_get_copyfile_disable 1
+    check "Zsh and Fish preserve a COPYFILE_DISABLE override" shells_get_copyfile_disable keep
 
     check "Zsh leaves ls unchanged when eza is unavailable" \
         env PATH="$system_path" zsh -ic '(( ! $+commands[eza] )) && (( ! $+aliases[ls] )) && command ls /'
@@ -431,21 +422,25 @@ else
     # shellcheck disable=SC2016 # Expanded by the mock shells.
     stub "$mock_dir" mise \
         'case "$1 ${2:-}" in' \
-        '  "activate bash"|"activate zsh") echo "export DOTFILES_MISE_MOCK=1" ;;' \
-        '  "activate fish") echo "set -gx DOTFILES_MISE_MOCK 1" ;;' \
+        '  "activate bash") echo "export DOTFILES_MISE_MOCK=1" ;;' \
+        '  "activate zsh") printf "%s\n" "export MISE_SHELL=zsh" "export DOTFILES_MISE_MOCK=1" ;;' \
+        '  "activate fish") printf "%s\n" "set -gx MISE_SHELL fish" "set -gx DOTFILES_MISE_MOCK 1" ;;' \
         "  \"activate xonsh\") echo \"\\\$DOTFILES_MISE_MOCK = '1'\" ;;" \
         '  "completion zsh") echo '\''_mise() { print -r -- mise-mock-word; }; if [ "$funcstack[1]" = _mise ]; then _mise "$@"; else compdef _mise mise; fi'\'' ;;' \
         '  "completion fish") echo "complete -c mise -f -a mise-mock-word" ;;' \
         '  *) exit 2 ;;' \
         'esac'
-    mise_shells() {
+    mise_activates_in_every_shell() {
         local mise_path="PATH=$mock_dir:$PATH"
         env "$mise_path" bash -ic 'test "$DOTFILES_MISE_MOCK" = 1' &&
             env "$mise_path" zsh -ic 'test "$DOTFILES_MISE_MOCK" = 1' &&
             env "$mise_path" fish -ic 'test "$DOTFILES_MISE_MOCK" = 1' &&
             env "$mise_path" xonsh -i -c 'assert $DOTFILES_MISE_MOCK == "1"; exit'
     }
-    check "Optional mise activation works in Bash, Zsh, Fish, and Xonsh" mise_shells
+    check "Optional mise activation works in Bash, Zsh, Fish, and Xonsh" mise_activates_in_every_shell
+    check "Zsh and Fish cache the mise activate script from the MISE_SHELL line" \
+        eval '[ "$(sed -n 2p "$HOME/.cache/zsh/mise-init.zsh")" = "export MISE_SHELL=zsh" ] &&
+            [ "$(sed -n 2p "$HOME/.local/share/fish/mise-init.fish")" = "set -gx MISE_SHELL fish" ]'
     # Calling _mise directly runs the completion function that mise prints, exactly once
     assert_equal mise-mock-word \
         "$(PATH="$mock_dir:$PATH" zsh -ic '[[ $_comps[mise] = _mise ]] && _mise' 2>/dev/null)" \
@@ -490,7 +485,7 @@ if grep -Fqx .rollback_reconcile_fixture "$backup_dir/managed-files.txt" &&
 else
     fail "Second apply did not capture the original of a newly managed path"
 fi
-if full_mode; then
+if optional_tools_installed; then
     assert_equal "$antidote_commit" "$(git -C "$HOME/.antidote" rev-parse HEAD)" \
         "Second apply leaves the Antidote checkout unchanged" \
         "Second apply changed the Antidote checkout"
@@ -501,7 +496,7 @@ assert_equal '' "$managed_diff" \
     "Managed-file diff is not clean after the full scripted re-apply"
 
 restore_script="$(mktemp)"
-render run_before_00-create-restore-point.sh.tmpl linux > "$restore_script"
+render_script run_before_00-create-restore-point.sh.tmpl linux > "$restore_script"
 manifests_sha="$(cat "$backup_dir"/*.txt | sha256sum)"
 assert_equal '' "$(sh "$restore_script" 2>&1 || echo failed)" \
     "Restore-point script is silent when no path is new" \
@@ -511,10 +506,10 @@ assert_equal "$manifests_sha" "$(cat "$backup_dir"/*.txt | sha256sum)" \
     "Restore-point script changed the manifests with no new path"
 rm -f "$restore_script"
 
-home_state() { find "$HOME" -printf '%p %y %s %T@ %m\n' | sort | sha256sum; }
-home_before_dry_run="$(home_state)"
+home_fingerprint() { find "$HOME" -printf '%p %y %s %T@ %m\n' | sort | sha256sum; }
+home_before_dry_run="$(home_fingerprint)"
 check "Uninstall dry run succeeds" sh /dotfiles/uninstall.sh --dry-run --yes
-assert_equal "$home_before_dry_run" "$(home_state)" \
+assert_equal "$home_before_dry_run" "$(home_fingerprint)" \
     "Uninstall dry run changes nothing" \
     "Uninstall dry run changed the home directory"
 
@@ -541,7 +536,6 @@ else
     fail "Original .zprofile symlink was not restored"
 fi
 
-# all_new_paths_removed: no path that was absent before install remains
 all_new_paths_removed() {
     local path
     while IFS= read -r path; do
@@ -550,11 +544,11 @@ all_new_paths_removed() {
 }
 check "All $(wc -l <<< "$new_paths") newly managed paths removed" all_new_paths_removed
 check "Installed Nerd Font files removed" every_font font_removed
-for removed in "$HOME/.local/bin/starship" "$state_root/starship-installed-by-dotfiles" \
+for removed_path in "$HOME/.local/bin/starship" "$state_root/starship-installed-by-dotfiles" \
         "$HOME/.antidote" "$state_root/antidote-installed-by-dotfiles" \
         "$state_root/current-backup" "$HOME/.local/share/chezmoi"; do
-    assert_absent "$removed" "Uninstall removed ${removed/#"$HOME"/\~}" \
-        "Uninstall left ${removed/#"$HOME"/\~}"
+    assert_absent "$removed_path" "Uninstall removed ${removed_path/#"$HOME"/\~}" \
+        "Uninstall left ${removed_path/#"$HOME"/\~}"
 done
 assert_nonempty_file "$state_root/last-uninstall-snapshot" \
     "Pre-uninstall recovery snapshot recorded" \

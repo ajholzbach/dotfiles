@@ -11,7 +11,7 @@ $XDG_CONFIG_HOME = ${...}.get('XDG_CONFIG_HOME', f'{$HOME}/.config')
 $STARSHIP_CONFIG = ${...}.get('STARSHIP_CONFIG', f'{$HOME}/.config/starship.toml')
 $BAT_CONFIG_PATH = ${...}.get('BAT_CONFIG_PATH', f'{$HOME}/.config/bat/config')
 
-# Load the untracked per-machine environment file
+# local-env.sh is an untracked file for per-machine values, and xonsh reads the Bash version
 if os.path.isfile(f'{$HOME}/.config/local-env.sh'):
     source-bash @(f'{$HOME}/.config/local-env.sh')
 
@@ -20,16 +20,15 @@ for _user_bin in (f'{$HOME}/bin', f'{$HOME}/.local/bin'):
         $PATH.insert(0, _user_bin)
 del _user_bin
 
-# Add /usr/local/bin to PATH, except on Windows
 if sys.platform != 'win32' and '/usr/local/bin' not in $PATH:
     $PATH.insert(0, '/usr/local/bin')
 
 
-def _setup_homebrew():
+def _add_homebrew_to_path():
     for brew_bin in (
-        '/opt/homebrew/bin/brew',                  # macOS Apple Silicon
-        '/usr/local/bin/brew',                     # macOS Intel
-        '/home/linuxbrew/.linuxbrew/bin/brew',     # Linuxbrew
+        '/opt/homebrew/bin/brew',
+        '/usr/local/bin/brew',
+        '/home/linuxbrew/.linuxbrew/bin/brew',
     ):
         if os.path.isfile(brew_bin) and os.access(brew_bin, os.X_OK):
             prefix = os.path.dirname(os.path.dirname(brew_bin))
@@ -40,24 +39,20 @@ def _setup_homebrew():
             return
 
 
-_setup_homebrew()
-del _setup_homebrew
+_add_homebrew_to_path()
+del _add_homebrew_to_path
 
 $XONSH_HISTORY_BACKEND = 'sqlite'
 $ENABLE_ASYNC_PROMPT = True
 $XONSH_COLOR_STYLE = 'catppuccin-mocha'
 # PTK rounds the Catppuccin colors to 256 colors by default
-# Use 24-bit color
 $PROMPT_TOOLKIT_COLOR_DEPTH = 'DEPTH_24_BIT'
 
 # The catppuccin-mocha style does not define these tokens
-# Map the Color.* and PTK.* tokens to the Catppuccin palette
 $XONSH_STYLE_OVERRIDES = {
-    # Color valid commands blue and unknown commands red
     'Token.Name.Builtin': '#89b4fa noitalic',
     'Token.Error': '#f38ba8 bold',
-    # xonsh builds the combined tokens from the base tokens
-    # Set the base LS_COLORS tokens
+    # xonsh builds the combined LS_COLORS tokens from these base tokens
     'Token.Color.BLACK':         '#45475a',
     'Token.Color.RED':           '#f38ba8',
     'Token.Color.GREEN':         '#a6e3a1',
@@ -79,7 +74,6 @@ $XONSH_STYLE_OVERRIDES = {
     'Token.Color.BACKGROUND_GREEN':  'bg:#a6e3a1',
     'Token.Color.BACKGROUND_YELLOW': 'bg:#f9e2af',
     'Token.Color.BACKGROUND_BLUE':   'bg:#89b4fa',
-    # PTK widgets
     'Token.PTK.AutoSuggestion': '#6c7086',
     'Token.PTK.CompletionMenu': 'bg:#181825 #cdd6f4',
     'Token.PTK.CompletionMenu.Completion': 'bg:#181825 #cdd6f4',
@@ -93,11 +87,10 @@ if $XONSH_INTERACTIVE:
     $UPDATE_OS_ENVIRON = True
 
     # xonsh init resets the Color.* tokens to its defaults
-    # Apply the style overrides again after init
     from xonsh.events import events
 
     @events.on_post_init
-    def _force_style_overrides(**kw):
+    def _reapply_style_overrides(**kw):
         try:
             styler = __xonsh__.shell.shell.styler
         except AttributeError:

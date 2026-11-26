@@ -21,6 +21,7 @@ if ([string]::IsNullOrWhiteSpace($backupId) -or $backupId.Contains('..') -or
 }
 
 $backupDir = Join-Path (Join-Path $stateRoot 'backups') $backupId
+$backupFilesDir = Join-Path $backupDir 'files'
 $manifestNames = @('managed-files.txt', 'existing-files.txt', 'powershell-profiles.json')
 foreach ($manifestName in $manifestNames) {
     if (-not (Test-Path -LiteralPath (Join-Path $backupDir $manifestName) -PathType Leaf)) {
@@ -62,9 +63,7 @@ function Copy-PathPreservingLink {
     }
 }
 
-# Invoke-Native NAME ARGUMENTS: run a command and throw when it fails
 # Shims such as scoop may not set $LASTEXITCODE
-# Check $? as well as $LASTEXITCODE
 function Invoke-Native {
     param([string]$Name, [string[]]$Arguments)
 
@@ -88,12 +87,12 @@ foreach ($path in $managed) {
     }
 }
 
-$existing = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+$existedBeforeInstall = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 foreach ($path in [IO.File]::ReadAllLines((Join-Path $backupDir 'existing-files.txt'))) {
     if (-not (Test-SafeRelativePath -Path $path) -or -not $managedSet.Contains($path)) {
         throw "Unsafe or unmanaged path in existing-files manifest: $path"
     }
-    if (-not $existing.Add($path)) {
+    if (-not $existedBeforeInstall.Add($path)) {
         throw "Duplicate path in existing-files manifest: $path"
     }
 }
@@ -159,15 +158,15 @@ if (-not $Yes) {
     }
 }
 
-# Validate every source and destination before changing any user files
+# A bad restore point must stop the uninstall before any user file changes
 foreach ($relativePath in $managed) {
     $target = Join-Path $HOME $relativePath
     if (Test-RealDirectory -Path $target) {
         throw "Refusing to replace directory where a managed file was expected: $target"
     }
 
-    if ($existing.Contains($relativePath)) {
-        $original = Join-Path (Join-Path $backupDir 'files') $relativePath
+    if ($existedBeforeInstall.Contains($relativePath)) {
+        $original = Join-Path $backupFilesDir $relativePath
         if (-not (Test-Path -LiteralPath $original) -or (Test-RealDirectory -Path $original)) {
             throw "Missing or invalid original file in restore point: $original"
         }
@@ -176,7 +175,8 @@ foreach ($relativePath in $managed) {
 
 $snapshotId = '{0}-{1}' -f [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ'), $PID
 $snapshotDir = Join-Path (Join-Path $stateRoot 'uninstall-snapshots') $snapshotId
-New-Item -ItemType Directory -Path (Join-Path $snapshotDir 'files') -Force | Out-Null
+$snapshotFilesDir = Join-Path $snapshotDir 'files'
+New-Item -ItemType Directory -Path $snapshotFilesDir -Force | Out-Null
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 $snapshotRestoreMetadata = Join-Path $snapshotDir 'restore-point'
@@ -189,7 +189,7 @@ $snapshotFiles = [System.Collections.Generic.List[string]]::new()
 foreach ($relativePath in $managed) {
     $target = Join-Path $HOME $relativePath
     if (Test-Path -LiteralPath $target) {
-        Copy-PathPreservingLink -Source $target -Destination (Join-Path (Join-Path $snapshotDir 'files') $relativePath)
+        Copy-PathPreservingLink -Source $target -Destination (Join-Path $snapshotFilesDir $relativePath)
         $snapshotFiles.Add($relativePath)
     }
 }
@@ -215,8 +215,8 @@ foreach ($relativePath in $managed) {
         Remove-Item -LiteralPath $target -Force
     }
 
-    if ($existing.Contains($relativePath)) {
-        Copy-PathPreservingLink -Source (Join-Path (Join-Path $backupDir 'files') $relativePath) -Destination $target
+    if ($existedBeforeInstall.Contains($relativePath)) {
+        Copy-PathPreservingLink -Source (Join-Path $backupFilesDir $relativePath) -Destination $target
         Write-Host "Restored ~\$relativePath"
     } else {
         Write-Host "Removed ~\$relativePath"
@@ -245,7 +245,6 @@ if (Test-Path -LiteralPath $starshipMarker) {
         $expectedVersion = [string]$markerRecord.Version
     } catch {
         # Early restore points store only the manager name
-        # Use the whole text as the manager name
         $manager = $markerText
     }
 
@@ -287,7 +286,6 @@ if ($starshipRemovalError) {
 }
 
 # A later install must save the current files again
-# Retire this restore point
 $lastRestoredBackup = Join-Path $stateRoot 'last-restored-backup'
 $lastRestoredTemporary = "$lastRestoredBackup.$PID.tmp"
 try {

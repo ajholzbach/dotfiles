@@ -43,7 +43,7 @@ autoload -Uz compinit
     [[ $dump.zwc -nt $dump ]] || zcompile "$dump"
 } "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 
-# Lazy-load Conda from CONDA_EXE, PATH, or common macOS and Linux locations
+# Run the slow conda hook only on the first conda call
 () {
     (( $# )) || return
     typeset -g _dotfiles_conda_exe=$1
@@ -59,7 +59,7 @@ autoload -Uz compinit
     {$HOME,/opt}/{miniforge3,miniconda3,anaconda3,mambaforge}/bin/conda(N-*) /opt/conda/bin/conda(N-*) \
     ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/Caskroom/{miniforge,miniconda,mambaforge,anaconda}/base/bin/conda(N-*)}
 
-# Lazy-load NVM
+# Source the slow nvm.sh only on the first nvm call
 export NVM_DIR=${NVM_DIR:-$HOME/.nvm}
 () {
     (( $# )) || return
@@ -72,35 +72,56 @@ export NVM_DIR=${NVM_DIR:-$HOME/.nvm}
     }
 } $NVM_DIR/nvm.sh(N-.L+0) ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/opt/nvm/nvm.sh(N-.L+0)}
 
-# Add pnpm's home when it exists
 [[ -n $PNPM_HOME ]] || () { (( $# )) && export PNPM_HOME=$1 } $HOME/{Library,.local/share}/pnpm(N/)
 [[ -n $PNPM_HOME ]] && path=("$PNPM_HOME" $path)
 
-if (( $+commands[mise] )); then
-    eval "$(mise activate zsh)"
-fi
-
-# Tool init commands print the same script each time, but take 5 to 10 ms each
-# Source the script from a cache file, and rebuild the file when the tool binary or this file changes
+# Tool init commands are slow, and they print the same script each time
+# --from LINE caches the script from LINE on, for a script whose first lines depend on the environment
+# --env NAME=VALUE sets a variable only for the command that builds the cache
 zmodload -F zsh/stat b:zstat
 _dotfiles_source_init() {
-    local bin=${commands[$1]:A} cache=${XDG_CACHE_HOME:-$HOME/.cache}/zsh/$1-init.zsh key line init
-    local -a mtime
-    [[ -n $bin ]] && zstat -A mtime +mtime -- "$bin" ${ZDOTDIR:-$HOME}/.zshrc(N) || return
-    key="# $bin $mtime"
-    [[ -r $cache ]] && read -r line < "$cache"
-    if [[ $line != "$key" ]]; then
-        init=$("$@" 2>/dev/null) && [[ -n $init ]] || return
-        # Starship runs a 7 ms subprocess to set PROMPT2
-        # Quote the command, so the prompt runs it only when it shows PROMPT2
-        init=${init/PROMPT2=\"\$\(/PROMPT2=\'\$\(}
-        init=${init/--continuation\)\"/--continuation)\'}
-        # Another shell can start while this shell writes the cache
-        # Write a temp file, then rename the temp file to the cache file
-        print -r -- "$key"$'\n'"$init" >| "$cache.$$" && mv -f "$cache.$$" "$cache"
+    local from cached_key key script start
+    local -a envs mtimes lines
+    while (( $# )); do
+        case $1 in
+            (--from) from=$2 ;;
+            (--env) envs+=("$2") ;;
+            (*) break ;;
+        esac
+        shift 2 || return
+    done
+    local bin=${commands[$1]:A} cache=${XDG_CACHE_HOME:-$HOME/.cache}/zsh/$1-init.zsh
+    [[ -n $bin ]] && zstat -A mtimes +mtime -- "$bin" ${ZDOTDIR:-$HOME}/.zshrc(N) || return
+    key="# $bin $mtimes"
+    [[ -r $cache ]] && read -r cached_key < "$cache"
+    if [[ $cached_key != "$key" ]]; then
+        script=$(env "${envs[@]}" "$bin" "${@:2}" 2>/dev/null) && [[ -n $script ]] || return
+        if [[ $1 == starship ]]; then
+            # Starship runs a subprocess to set PROMPT2
+            # In single quotes, the prompt runs it only when it shows PROMPT2
+            script=${script/PROMPT2=\"\$\(/PROMPT2=\'\$\(}
+            script=${script/--continuation\)\"/--continuation)\'}
+        fi
+        if [[ -n $from ]]; then
+            lines=("${(@f)script}")
+            start=${lines[(ie)$from]}
+            # A script without LINE has a format that this function does not know
+            if (( start > $#lines )); then
+                eval "$script"
+                return
+            fi
+            script=${(F)lines[start,-1]}
+        fi
+        # A shell that starts during the write must never read a partial cache
+        print -r -- "$key"$'\n'"$script" >| "$cache.$$" && mv -f "$cache.$$" "$cache"
     fi
     source "$cache"
 }
+
+# mise can provide zoxide and fzf
+# The lines before MISE_SHELL depend on the environment, and the first hook-env call does their work again
+# The command-not-found handler checks not_found_auto_install each time it runs
+_dotfiles_source_init --from 'export MISE_SHELL=zsh' --env MISE_NOT_FOUND_AUTO_INSTALL=1 mise activate zsh
 
 if _dotfiles_source_init zoxide init zsh --cmd cd; then
     alias cdo='builtin cd'
@@ -118,7 +139,6 @@ if (( $+commands[eza] )); then
 fi
 
 # fzf before 0.48 has no --zsh option, but Debian and Ubuntu ship its scripts
-# Use those scripts when fzf --zsh fails
 if (( $+commands[fzf] )) && ! _dotfiles_source_init fzf --zsh; then
     for _dotfiles_fzf_script in /usr/share/doc/fzf/examples/{key-bindings,completion}.zsh(N); do
         source "$_dotfiles_fzf_script"
@@ -128,7 +148,6 @@ fi
 
 if _dotfiles_source_init starship init zsh; then
     # starship.toml has no right_format, but the right prompt still runs starship
-    # Clear the right prompt
     RPROMPT=''
 fi
 unfunction _dotfiles_source_init
@@ -149,14 +168,14 @@ zstyle ':antidote:bundle:*' zcompile yes
 # Defer only the plugin load, and skip the prompt hooks and redraw
 zstyle ':antidote:bundle:*' defer-options '-a'
 
-# Loading Antidote takes 4 ms, so load it from ~/.antidote or Homebrew on its first use
+# Loading Antidote is slow, and most starts do not need it
 () {
     (( $# )) || return
     functions[antidote]="unfunction antidote; source ${(q)1}; antidote \"\$@\""
 } $HOME/.antidote/antidote.zsh(N) ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/opt/antidote/share/antidote/antidote.zsh(N)}
 
-# antidote load rebuilds the bundle when the plugin list changes or antidote update removes .antidote.load
-# In other cases, source the bundle without Antidote
+# The bundle is stale when the plugin list is newer or antidote update removed .antidote.load
+# Only a stale bundle needs Antidote
 if [[ $_dotfiles_antidote_home/zsh_plugins.zsh -nt ${ZDOTDIR:-$HOME}/.zsh_plugins.txt &&
         -e $_dotfiles_antidote_home/.antidote.load ]]; then
     source "$_dotfiles_antidote_home/zsh_plugins.zsh"

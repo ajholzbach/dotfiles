@@ -37,7 +37,12 @@ validate_relative_path() {
     esac
 }
 
-if [ ! -e "$CURRENT_BACKUP" ] && [ ! -L "$CURRENT_BACKUP" ]; then
+# A broken symlink also counts as present
+path_exists() {
+    [ -e "$1" ] || [ -L "$1" ]
+}
+
+if ! path_exists "$CURRENT_BACKUP"; then
     echo "No dotfiles restore point was found at $CURRENT_BACKUP." >&2
     echo "Nothing was changed." >&2
     exit 1
@@ -59,6 +64,10 @@ esac
 backup_dir="$STATE_ROOT/backups/$backup_id"
 managed_manifest="$backup_dir/managed-files.txt"
 existing_manifest="$backup_dir/existing-files.txt"
+
+existed_before_install() {
+    grep -Fqx -e "$1" "$existing_manifest"
+}
 
 if [ ! -d "$backup_dir" ] || [ -L "$backup_dir" ] || \
         [ ! -f "$managed_manifest" ] || [ -L "$managed_manifest" ] || \
@@ -89,7 +98,7 @@ if [ "$ASSUME_YES" -ne 1 ]; then
     esac
 fi
 
-# Validate every path before changing any of them
+# A bad manifest must stop the uninstall before any file changes
 while IFS= read -r relative_path; do
     validate_relative_path "$relative_path"
 
@@ -99,9 +108,9 @@ while IFS= read -r relative_path; do
         exit 1
     fi
 
-    if grep -Fqx -e "$relative_path" "$existing_manifest"; then
+    if existed_before_install "$relative_path"; then
         original="$backup_dir/files/$relative_path"
-        if [ ! -e "$original" ] && [ ! -L "$original" ]; then
+        if ! path_exists "$original"; then
             echo "Missing original file in restore point: $original" >&2
             exit 1
         fi
@@ -117,11 +126,10 @@ printf '%s\n' "$backup_id" > "$snapshot_dir/restore-point-id"
 cp -p "$managed_manifest" "$snapshot_dir/managed-files.txt"
 cp -p "$existing_manifest" "$snapshot_dir/originally-existing-files.txt"
 
-# Edits made after install stay recoverable
-# Snapshot the current managed files
+# Edits made after install must stay recoverable
 while IFS= read -r relative_path; do
     target="$HOME/$relative_path"
-    if [ -e "$target" ] || [ -L "$target" ]; then
+    if path_exists "$target"; then
         snapshot_target="$snapshot_dir/files/$relative_path"
         mkdir -p "$(dirname "$snapshot_target")"
         cp -pP "$target" "$snapshot_target"
@@ -129,7 +137,7 @@ while IFS= read -r relative_path; do
     fi
 done < "$managed_manifest"
 
-# restore_fish_universals FILE: run the set -U lines in FILE, or stop
+# DOTFILES_LOADING_LOCAL_ENV=1 keeps config.fish from sourcing local-env.fish
 restore_fish_universals() {
     # shellcheck disable=SC2016 # Fish expands $argv
     if ! command -v fish >/dev/null 2>&1 || \
@@ -140,8 +148,8 @@ restore_fish_universals() {
     fi
 }
 
-# The older theme save must win for the colors
-# Restore the cleanup save, then the older theme save, before removing files
+# The colors of the older theme save must win
+# Both restores run before the managed files are removed
 fish_universals_restore="$STATE_ROOT/fish-universals-restore.fish"
 fish_theme_restore="$STATE_ROOT/fish-theme-restore.fish"
 fish_frozen_theme_restore="$STATE_ROOT/fish-frozen-theme-restore.fish"
@@ -166,14 +174,14 @@ if [ -f "$fish_theme_restore" ]; then
     echo "Restored the Fish colors from before these dotfiles"
 fi
 
-# Restore the files that the Fish cleanup moved, unless a newer file exists
+# The Fish cleanup script moved these files aside
 fish_files_backup="$STATE_ROOT/fish-files-backup"
 if [ -d "$fish_files_backup" ]; then
     (cd "$fish_files_backup" && find . ! -type d) | while IFS= read -r relative_path; do
         relative_path="${relative_path#./}"
         validate_relative_path "$relative_path"
         target="$HOME/.config/fish/$relative_path"
-        if [ -e "$target" ] || [ -L "$target" ]; then
+        if path_exists "$target"; then
             continue
         fi
         mkdir -p "$(dirname "$target")"
@@ -187,10 +195,9 @@ while IFS= read -r relative_path; do
     target="$HOME/$relative_path"
     rm -f "$target"
 
-    if grep -Fqx -e "$relative_path" "$existing_manifest"; then
-        original="$backup_dir/files/$relative_path"
+    if existed_before_install "$relative_path"; then
         mkdir -p "$(dirname "$target")"
-        cp -pP "$original" "$target"
+        cp -pP "$backup_dir/files/$relative_path" "$target"
         echo "Restored ~/$relative_path"
     else
         echo "Removed ~/$relative_path"
@@ -202,10 +209,9 @@ starship_marker="$STATE_ROOT/starship-installed-by-dotfiles"
 starship_path="$HOME/.local/bin/starship"
 if [ -f "$starship_marker" ]; then
     # Older markers hold other lines too
-    # Read the checksum line from the marker
-    recorded="$(grep -Em 1 '^[0-9a-f]{64}$' "$starship_marker" || true)"
-    current="$({ sha256sum "$starship_path" 2>/dev/null || shasum -a 256 "$starship_path" 2>/dev/null; } | cut -d ' ' -f 1)"
-    if [ -n "$recorded" ] && [ "$recorded" = "$current" ]; then
+    recorded_checksum="$(grep -Em 1 '^[0-9a-f]{64}$' "$starship_marker" || true)"
+    current_checksum="$({ sha256sum "$starship_path" 2>/dev/null || shasum -a 256 "$starship_path" 2>/dev/null; } | cut -d ' ' -f 1)"
+    if [ -n "$recorded_checksum" ] && [ "$recorded_checksum" = "$current_checksum" ]; then
         rm -f "$starship_path"
         echo "Removed Starship installed by these dotfiles"
     elif [ -e "$starship_path" ]; then
@@ -217,9 +223,9 @@ fi
 antidote_marker="$STATE_ROOT/antidote-installed-by-dotfiles"
 antidote_path="$HOME/.antidote"
 if [ -f "$antidote_marker" ]; then
-    recorded="$(grep -Em 1 '^[0-9a-f]{40,64}$' "$antidote_marker" || true)"
-    if [ -n "$recorded" ] && [ -d "$antidote_path" ] && [ ! -L "$antidote_path" ] && \
-            [ "$(git -C "$antidote_path" rev-parse HEAD 2>/dev/null)" = "$recorded" ] && \
+    recorded_commit="$(grep -Em 1 '^[0-9a-f]{40,64}$' "$antidote_marker" || true)"
+    if [ -n "$recorded_commit" ] && [ -d "$antidote_path" ] && [ ! -L "$antidote_path" ] && \
+            [ "$(git -C "$antidote_path" rev-parse HEAD 2>/dev/null)" = "$recorded_commit" ] && \
             [ -z "$(git -C "$antidote_path" status --porcelain --untracked-files=all 2>&1)" ]; then
         rm -rf "$antidote_path"
         echo "Removed Antidote installed by these dotfiles"

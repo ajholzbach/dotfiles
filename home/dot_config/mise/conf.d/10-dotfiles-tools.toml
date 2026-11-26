@@ -7,18 +7,16 @@ bat = { version = "latest", os = ["linux"] }
 eza = { version = "latest", os = ["linux"] }
 fzf = { version = "latest", os = ["linux"] }
 zoxide = { version = "latest", os = ["linux"] }
-# The go: backend needs go to build gopls
-# Install go and gopls, the Go language server that Zed runs from PATH
+# Zed runs gopls from PATH, and the go: backend needs go to build gopls
 go = { version = "latest", os = ["linux"] }
 "go:golang.org/x/tools/gopls" = { version = "latest", os = ["linux"] }
 
 # Fish 3 marks zoxide queries after cd as bad paths
-# Add the fish 4 PPA, which mise adds only on Ubuntu and its derivatives
+# mise adds this PPA only on Ubuntu and its derivatives
 [bootstrap.apt.sources]
 fish-shell-release-4 = { ppa = "fish-shell/release-4", fingerprint = "88421E703EDC7AF54967DED473C9FCC9E2BB48DA" }
 
-# Homebrew skips casks that mise installs without Homebrew metadata
-# Write the metadata, so brew list and brew upgrade see the font
+# brew list and brew upgrade skip casks that mise installs without Homebrew metadata
 [bootstrap.brew]
 homebrew_metadata = true
 
@@ -35,7 +33,6 @@ homebrew_metadata = true
 "brew:starship" = { version = "latest", os = "macos" }
 "brew:zoxide" = { version = "latest", os = "macos" }
 # A dotfiles-only install puts the same font files in ~/Library/Fonts
-# Adopt those files when they match the cask
 "brew-cask:font-meslo-lg-nerd-font" = { version = "latest", os = "macos", adopt = true }
 "apt:fish" = "latest"
 "apt:git" = "latest"

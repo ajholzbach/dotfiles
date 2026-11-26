@@ -21,24 +21,22 @@ else
     : > "$backup_dir/existing-files.txt"
 fi
 
-current="$backup_dir/.current-managed.$$"
+current_managed="$backup_dir/.current-managed.$$"
 next_managed="$backup_dir/.managed-files.$$"
 next_existing="$backup_dir/.existing-files.$$"
 new_paths="$backup_dir/.new-managed.$$"
-trap 'rm -f "$current" "$next_managed" "$next_existing" "$new_paths"' EXIT
+trap 'rm -f "$current_managed" "$next_managed" "$next_existing" "$new_paths"' EXIT
 
-# A custom source, config, or destination must apply here too
-# Pass the outer apply's paths to this chezmoi
+# A custom source, config, or destination of the outer apply must apply here too
 DEST_DIR={{ .chezmoi.destDir | quote }}
 {{ .chezmoi.executable | quote }} --source {{ .chezmoi.sourceDir | quote }} \
     --config {{ .chezmoi.configFile | quote }} --destination "$DEST_DIR" \
-    managed --include=files,symlinks --path-style=relative > "$current"
-[ -s "$current" ] || die "chezmoi returned no managed files; refusing to apply without a restore point."
+    managed --include=files,symlinks --path-style=relative > "$current_managed"
+[ -s "$current_managed" ] || die "chezmoi returned no managed files; refusing to apply without a restore point."
 cp -p "$backup_dir/managed-files.txt" "$next_managed"
 cp -p "$backup_dir/existing-files.txt" "$next_existing"
 # NR == FNR fails when the saved list is empty
-# Test FILENAME, not NR == FNR
-awk 'FILENAME == ARGV[1] { seen[$0] = 1; next } !($0 in seen)' "$next_managed" "$current" > "$new_paths"
+awk 'FILENAME == ARGV[1] { seen[$0] = 1; next } !($0 in seen)' "$next_managed" "$current_managed" > "$new_paths"
 
 added=0
 while IFS= read -r relative_path; do
@@ -56,8 +54,7 @@ while IFS= read -r relative_path; do
     added=$((added + 1))
 done < "$new_paths"
 
-# After an interruption, the next apply saves any path this run missed
-# Move existing-files into place before managed-files
+# An interruption must never make uninstall delete an original file
 mv "$next_existing" "$backup_dir/existing-files.txt"
 mv "$next_managed" "$backup_dir/managed-files.txt"
 

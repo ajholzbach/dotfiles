@@ -1,14 +1,14 @@
 """Conda integration. Lazy-loads the xonsh hook to keep startup fast.
 
-On first `conda` use, sources `conda shell.xonsh hook` (~720 ms) which
+On first `conda` use, sources the slow `conda shell.xonsh hook`, which
 installs the real `conda` alias. Until then:
 - condabin/ is on PATH so `conda`, `mamba`, etc. are callable as binaries
 - a filesystem-based completer makes `conda activate <TAB>` work
 - a lazy shim handles `conda` itself
 
-`mamba activate` falls through to the binary and fails natively; use
-`conda activate`. mamba 2.x's xonsh hook only registers completers, and a
-subprocess can't mutate the parent shell's env in any case.
+`mamba activate` falls through to the binary and fails. Use
+`conda activate`. The mamba 2.x xonsh hook only registers completers, and a
+subprocess cannot change the environment of the parent shell.
 """
 
 import os
@@ -43,12 +43,10 @@ def _find_conda():
 
 def _build_conda_integration(conda_root, conda_bin):
     # The module deletes its globals, and FuncAlias rewrites signatures
-    # Keep the conda state in closures
     envs_dir = os.path.join(conda_root, 'envs')
 
     def register_completer():
         # conda's completer imports conda, which fails in xonsh's uv tool env
-        # Replace conda's completer
         def _conda_completer(prefix, line, start, end, ctx, _envs_dir=envs_dir):
             args = line.split(' ')
             if not args or args[0] != 'conda':
@@ -91,7 +89,6 @@ def _build_conda_integration(conda_root, conda_bin):
             return result.returncode or 1
         hook = result.stdout
         # conda activate fails when it runs inside this function
-        # Drop the final conda activate line from the hook
         lines = hook.strip().splitlines()
         if lines and lines[-1].strip().startswith('conda activate'):
             lines = lines[:-1]
@@ -101,7 +98,6 @@ def _build_conda_integration(conda_root, conda_bin):
             aliases['conda'] = lazy_conda
             return 1
         # The hook replaced the completer with a broken one
-        # Register this completer again
         register_completer()
         real_conda = aliases.get('conda')
         if real_conda is None or real_conda is lazy_conda:
@@ -112,19 +108,18 @@ def _build_conda_integration(conda_root, conda_bin):
     return register_completer, lazy_conda
 
 
-_conda_root, _conda = _find_conda()
+_conda_root, _conda_bin = _find_conda()
 
 if _conda_root is not None:
-    # The conda hook prepends condabin when conda loads
-    # Append condabin to PATH
+    # Append condabin for now, and let the conda hook move it to the front when conda loads
     _condabin = os.path.join(_conda_root, 'condabin')
     if _condabin not in $PATH:
         $PATH.append(_condabin)
     del _condabin
 
-    _register, _lazy = _build_conda_integration(_conda_root, _conda)
+    _register, _lazy = _build_conda_integration(_conda_root, _conda_bin)
     _register()
     aliases['conda'] = _lazy
     del _register, _lazy
 
-del _conda_root, _conda, _find_conda, _build_conda_integration
+del _conda_root, _conda_bin, _find_conda, _build_conda_integration

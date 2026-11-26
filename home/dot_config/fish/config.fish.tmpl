@@ -1,14 +1,15 @@
-# The managed configs stay in ~/.config even when XDG_CONFIG_HOME is custom
 set -q XDG_CONFIG_HOME; or set -gx XDG_CONFIG_HOME $HOME/.config
+# The managed configs stay in ~/.config even when XDG_CONFIG_HOME is custom
 set -q STARSHIP_CONFIG; or set -gx STARSHIP_CONFIG $HOME/.config/starship.toml
 set -q BAT_CONFIG_PATH; or set -gx BAT_CONFIG_PATH $HOME/.config/bat/config
+# macOS tar adds ._ AppleDouble files to archives unless COPYFILE_DISABLE is set
 set -q COPYFILE_DISABLE; or set -gx COPYFILE_DISABLE 1
 # fzf fails on every call when this file is missing
 if not set -q FZF_DEFAULT_OPTS_FILE; and test -r $HOME/.config/fzf/fzfrc
     set -gx FZF_DEFAULT_OPTS_FILE $HOME/.config/fzf/fzfrc
 end
 
-# Load the untracked per-machine environment file
+# local-env.fish is an untracked file for per-machine values
 if not set -q DOTFILES_LOADING_LOCAL_ENV; and test -f $HOME/.config/local-env.fish
     set -g DOTFILES_LOADING_LOCAL_ENV 1
     source $HOME/.config/local-env.fish
@@ -38,14 +39,12 @@ if status is-interactive
 {{- end }}
 
     # mise can provide zoxide and fzf
-    # Activate mise before the tool init scripts run
-    if type -q mise
-        mise activate fish | source
-    end
+    # The lines before MISE_SHELL depend on the environment, and the first hook-env call does their work again
+    # The command-not-found handler checks not_found_auto_install each time it runs
+    __dotfiles_source_init --from 'set -gx MISE_SHELL fish' --env MISE_NOT_FOUND_AUTO_INSTALL=1 mise activate fish
     if __dotfiles_source_init starship init fish --print-full-init
         functions -q enable_transience; and enable_transience
         # starship.toml has no right_format, but the right prompt still runs starship
-        # Remove the right prompt
         functions -e fish_right_prompt
     end
     __dotfiles_source_init zoxide init --cmd cd fish

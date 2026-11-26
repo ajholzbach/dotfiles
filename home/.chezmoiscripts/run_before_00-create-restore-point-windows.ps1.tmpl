@@ -39,8 +39,7 @@ function Copy-PathPreservingLink {
     }
 }
 
-# A custom source, config, or destination must apply here too
-# Pass the outer apply's paths to this chezmoi
+# A custom source, config, or destination of the outer apply must apply here too
 $destDir = '{{ .chezmoi.destDir | replace "'" "''" }}'
 $managed = @(& '{{ .chezmoi.executable | replace "'" "''" }}' `
         --source '{{ .chezmoi.sourceDir | replace "'" "''" }}' `
@@ -109,7 +108,7 @@ if ($isNewBackup) {
 }
 
 try {
-    # Back up only the targets that are new to the restore point
+    # A target already in the restore point keeps its copy from before the first apply
     $addedCount = 0
     foreach ($relativePath in $managed) {
         if (-not $savedManagedSet.Add($relativePath)) {
@@ -125,8 +124,7 @@ try {
     }
 
     if ($addedCount -gt 0) {
-        # An interruption must never make uninstall delete an original
-        # Write existing-files before managed-files
+        # An interruption must never make uninstall delete an original file
         Write-StateFile (Join-Path $backupDir 'existing-files.txt') $savedExisting
         Write-StateFile (Join-Path $backupDir 'managed-files.txt') $savedManaged
     }
