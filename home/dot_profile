@@ -12,9 +12,16 @@ if [ -z "${FZF_DEFAULT_OPTS_FILE:-}" ] && [ -r "$HOME/.config/fzf/fzfrc" ]; then
     export FZF_DEFAULT_OPTS_FILE="$HOME/.config/fzf/fzfrc"
 fi
 
-# Always prepend, because path_helper moves inherited entries after /usr/bin
+# path_helper moves inherited entries after /usr/bin, and a nested shell must not add a second copy
+path_prepend() {
+    case ":$PATH:" in
+        *":$1:"*":/usr/bin:"*) ;;
+        *) PATH="$1${PATH:+:$PATH}" ;;
+    esac
+}
+
 for user_bin in "$HOME/bin" "$HOME/.local/bin"; do
-    [ -d "$user_bin" ] && PATH="$user_bin${PATH:+:$PATH}"
+    [ -d "$user_bin" ] && path_prepend "$user_bin"
 done
 unset user_bin
 export PATH
@@ -23,11 +30,13 @@ for brew_prefix in /opt/homebrew /usr/local /home/linuxbrew/.linuxbrew; do
     if [ -x "$brew_prefix/bin/brew" ]; then
         export HOMEBREW_PREFIX="$brew_prefix"
         export HOMEBREW_DOWNLOAD_CONCURRENCY="${HOMEBREW_DOWNLOAD_CONCURRENCY:-auto}"
-        PATH="$brew_prefix/bin:$brew_prefix/sbin${PATH:+:$PATH}"
+        path_prepend "$brew_prefix/sbin"
+        path_prepend "$brew_prefix/bin"
         break
     fi
 done
 unset brew_prefix
+unset -f path_prepend
 
 export CONDA_AUTO_ACTIVATE_BASE="${CONDA_AUTO_ACTIVATE_BASE:-false}"
 

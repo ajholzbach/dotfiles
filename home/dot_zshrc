@@ -36,11 +36,11 @@ autoload -Uz compinit
     [[ -d $1 ]] || mkdir -p "$1"
     if [[ -n $dump(#qN.mh-24) ]]; then
         compinit -C -d "$dump"
-    else
-        compinit -d "$dump"
+    elif compinit -d "$dump"; then
+        # An aborted compinit writes no dump, and an empty dump would pass the check above
         touch "$dump"
     fi
-    [[ $dump.zwc -nt $dump ]] || zcompile "$dump"
+    [[ ! -s $dump || $dump.zwc -nt $dump ]] || zcompile "$dump"
 } "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 
 # Run the slow conda hook only on the first conda call
@@ -90,13 +90,15 @@ _dotfiles_source_init() {
         esac
         shift 2 || return
     done
-    local bin=${commands[$1]:A} cache=${XDG_CACHE_HOME:-$HOME/.cache}/zsh/$1-init.zsh
+    local tool=$1
+    shift
+    local bin=${commands[$tool]:A} cache=${XDG_CACHE_HOME:-$HOME/.cache}/zsh/$tool-init.zsh
     [[ -n $bin ]] && zstat -A mtimes +mtime -- "$bin" ${ZDOTDIR:-$HOME}/.zshrc(N) || return
     key="# $bin $mtimes"
     [[ -r $cache ]] && read -r cached_key < "$cache"
     if [[ $cached_key != "$key" ]]; then
-        script=$(env "${envs[@]}" "$bin" "${@:2}" 2>/dev/null) && [[ -n $script ]] || return
-        if [[ $1 == starship ]]; then
+        script=$(env "${envs[@]}" "$bin" "$@" 2>/dev/null) && [[ -n $script ]] || return
+        if [[ $tool == starship ]]; then
             # Starship runs a subprocess to set PROMPT2
             # In single quotes, the prompt runs it only when it shows PROMPT2
             script=${script/PROMPT2=\"\$\(/PROMPT2=\'\$\(}
@@ -113,7 +115,11 @@ _dotfiles_source_init() {
             script=${(F)lines[start,-1]}
         fi
         # A shell that starts during the write must never read a partial cache
-        print -r -- "$key"$'\n'"$script" >| "$cache.$$" && mv -f "$cache.$$" "$cache"
+        print -r -- "$key"$'\n'"$script" >| "$cache.$$" && mv -f "$cache.$$" "$cache" || {
+            # Without a new cache, source would read a stale cache or none
+            eval "$script"
+            return
+        }
     fi
     source "$cache"
 }
@@ -161,7 +167,7 @@ git_current_branch() {
 # zsh-syntax-highlighting must wrap every widget, so load the plugins last
 # macOS can purge ~/Library/Caches, so keep the clones in the data directory
 # Keep the bundle with the clones, so a lost clone directory also loses the bundle
-_dotfiles_antidote_home=${XDG_DATA_HOME:-$HOME/.local/share}/antidote
+_dotfiles_antidote_home=${ANTIDOTE_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/antidote}
 zstyle ':antidote:home' dir "$_dotfiles_antidote_home"
 zstyle ':antidote:static' file "$_dotfiles_antidote_home/zsh_plugins.zsh"
 zstyle ':antidote:bundle:*' zcompile yes

@@ -22,7 +22,12 @@ function __dotfiles_source_init -d "Source the script that a tool init command p
         end
         mkdir -p $__fish_user_data_dir
         # A shell that starts during the write must never read a partial cache
-        printf '%s\n' $key $script >$cache.$fish_pid; and mv $cache.$fish_pid $cache
+        if not printf '%s\n' $key $script >$cache.$fish_pid; or not mv $cache.$fish_pid $cache
+            # Without a new cache, source would read a stale cache or none
+            rm -f $cache.$fish_pid
+            printf '%s\n' $script | source
+            return
+        end
     end
     source $cache
 end

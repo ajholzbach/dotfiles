@@ -333,9 +333,9 @@ else
     # TERM stops fish 3 terminal warnings
     # The second start sources the Starship cache
     fish_starship_quiet() {
-        local probe='functions -q enable_transience; or echo missing'
-        [ -z "$(TERM=xterm-256color fish -ic "$probe" 2>&1)" ] &&
-            [ -z "$(TERM=xterm-256color fish -ic "$probe" 2>&1)" ]
+        local probe='functions -q enable_transience; or echo missing' out
+        out="$(TERM=xterm-256color fish -ic "$probe" 2>&1)" && [ -z "$out" ] &&
+            out="$(TERM=xterm-256color fish -ic "$probe" 2>&1)" && [ -z "$out" ]
     }
     check "Fish loads the Starship prompt with no errors, also from its cache" \
         fish_starship_quiet
@@ -421,6 +421,7 @@ else
     # The zsh mock completion follows the funcstack check that mise prints
     # shellcheck disable=SC2016 # Expanded by the mock shells.
     stub "$mock_dir" mise \
+        "echo \"\$*\" >>$mock_dir/calls" \
         'case "$1 ${2:-}" in' \
         '  "activate bash") echo "export DOTFILES_MISE_MOCK=1" ;;' \
         '  "activate zsh") printf "%s\n" "export MISE_SHELL=zsh" "export DOTFILES_MISE_MOCK=1" ;;' \
@@ -450,6 +451,10 @@ else
         "$(PATH="$mock_dir:$PATH" fish -ic 'complete -C "mise "' 2>/dev/null)" \
         "Fish loads the mise completions from mise" \
         "Fish did not load the mise completions from mise"
+    # Zsh and Fish each started twice with this mise, and only the first start may run it
+    check "Zsh and Fish run mise activate once, then read the init cache" \
+        eval '[ "$(grep -c "^activate zsh" "$mock_dir/calls")" -eq 1 ] &&
+            [ "$(grep -c "^activate fish" "$mock_dir/calls")" -eq 1 ]'
     rm -rf "$mock_dir"
 
     check "Vim configuration loads" vim -Nu "$HOME/.vimrc" -n -es '+qall'
